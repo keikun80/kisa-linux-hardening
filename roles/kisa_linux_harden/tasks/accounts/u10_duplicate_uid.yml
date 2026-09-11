@@ -1,0 +1,43 @@
+# =============================================================================
+# U-10 동일한 UID 금지
+# 판단 기준: 서로 다른 계정 간 UID 겹침이 없어야 양호
+# 자동 조치(고위험, 기본 OFF: vu_apply_dup_uid + vu_dup_uid_newvals 매핑):
+#   user 모듈로 새 UID 재할당 — 주의: 옛 UID 번호로 남아있는 파일의 소유권은
+#   변하지 않으므로 chown -R --from=옛UID 신규UID 를 같이 해야 한다.
+# =============================================================================
+
+- name: "[U-10] UID 가 겹키는 계정 집합 산출"
+  set_fact:
+    u10_dup_uids: >-
+      {% set acc = {} %}
+      {% for u in vu_users %}
+        {% if u.uid | int > 0 %}
+          {% set kk = u.uid | string %}
+          {% set _ = acc.update({kk: (acc.get(kk, []) + [u.name])}) %}
+        {% endif %}
+      {% endfor %}
+      {% set nav = [] %}
+      {% for k in acc.keys() | sort %}
+        {% if acc[k] | length > 1 %}{% set _ = nav.append({'uid': k, 'users': acc[k]}) %}{% endif %}
+      {% endfor %}
+      {{ nav }}
+
+- name: "[U-10] 중복 UID 계정 새 UID 로 재할당 (토클+매핑 필요)"
+  user:
+    name: "{{ item.key }}"
+    uid: "{{ item.value }}"
+  loop: "{{ vu_dup_uid_newvals | dict2items }}"
+  loop_control:
+    label: "{{ item.key }} -> {{ item.value }}"
+  when:
+    - vu_apply_dup_uid | bool
+    - vu_dup_uid_newvals | length > 0
+
+- name: "[U-10:M] 중복 UID 리포트 / 처분 안내"
+  debug:
+    msg: >-
+      {{ '겹치는 UID: ' ~ u10_dup_uids | tojson
+         if u10_dup_uids | length > 0 else 'UID 중복 없음 (양호)' }}
+      {{ '재할당은 -e vu_apply_dup_uid=true -e vu_dup_uid_newvals={"계정명": 새UID} 로 수행 후,
+          chown -R --from=옛UID 새UID /대상경로 까지 병행 바람'
+         if u10_dup_uids | length > 0 else '' }}

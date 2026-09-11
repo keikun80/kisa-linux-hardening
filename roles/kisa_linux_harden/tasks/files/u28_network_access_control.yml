@@ -1,0 +1,88 @@
+# =============================================================================
+# U-28 접속 IP 및 포트 제한 (TCP wrappers + 방화벽)
+# 판단 기준: /etc/hosts.deny ALL:ALL 또는 방화벽 정책 존재
+# 자동 조치:
+#   (항상)   hosts.deny 에 ALL:ALL 보장 (TCP Wrappers 기본 거부, 안전)
+#   (토클ON) vu_manage_host_firewall=true → firewalld / ufw 기본 DENY+SSH만 개방
+#            EC2 보안군이 이미 담당한다면 OFF로 두고 SG 정책을 인용하면 된다
+# =============================================================================
+
+- name: "[U-28] /etc/hosts.deny 에 기본 거부(ALL:ALL) 보장"
+  lineinfile:
+    path: /etc/hosts.deny
+    line: "ALL: ALL"
+    regexp: "^ALL:\\s*ALL$"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    backup: false
+
+# ---------- 방화벽 (높은 리스크 — 토클로만) ------------------------------------
+- name: "[U-28] 방화벽 개방_CIDR 검증 (토클 ON 전 체크)"
+  fail:
+    msg: >-
+      vu_manage_host_firewall=true 이지만 vu_firewall_allow_sources 가 비어 있습니다.
+      SSH 접속이 끊기는 걸 막기 위해 반드시 원본 CIDR을 지정하세요.
+  when:
+    - vu_manage_host_firewall | bool
+    - vu_firewall_allow_sources | length == 0
+
+- name: "[U-28] 방화벽 개방 쌍(출처 x 포트) 계산"
+  set_fact:
+    u28_pairs: >-
+      {% set nav = [] %}
+      {% for s in vu_firewall_allow_sources | default([]) %}
+        {% for p in vu_firewall_tcp_ports | default([22]) %}
+          {% set _ = nav.append({'src': s, 'port': p | int}) %}
+        {% endfor %}
+      {% endfor %}
+      {{ nav }}
+  when: vu_manage_host_firewall | bool
+
+- name: "[U-28] firewalld 활성화 (RHEL 계열)"
+  systemd:
+    name: firewalld
+    state: started
+    enabled: true
+  when:
+    - vu_manage_host_firewall | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+
+- name: "[U-28] firewalld 출처별 허용 규칙 (목표 포트만)"
+  firewalld:
+    permanent: true
+    immediate: true
+    rich_rule: "rule family ipv4 source address={{ item.src }} port port={{ item.port }} protocol=tcp accept"
+  loop: "{{ u28_pairs }}"
+  when:
+    - vu_manage_host_firewall | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+
+- name: "[U-28] ufw 활성화 (기본 수신 거부)"
+  ufw:
+    state: enabled
+    policy: deny
+  when:
+    - vu_manage_host_firewall | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+- name: "[U-28] ufw 출처별 허용 규칙"
+  ufw:
+    state: enabled
+    rule: allow
+    src: "{{ item.src }}"
+    proto: tcp
+    port: "{{ item.port }}"
+  loop: "{{ u28_pairs }}"
+  when:
+    - vu_manage_host_firewall | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+- name: "[U-28:M] 방화벽 관련 지침 (토클 OFF 시)"
+  debug:
+    msg: |
+      방화벽 자동화가 꺼져 있습니다. EC2에서는 Security Group이 접근을
+      제한하는 것이 원칙이며, SG 정책 스크린샷이 점검 근거로 활용됩니다.
+      (호스트 내부 방화벽이 꼭 필요할 때만:
+       -e vu_manage_host_firewall=true -e vu_firewall_allow_sources=10.0.0.0/8)

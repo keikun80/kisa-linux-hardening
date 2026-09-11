@@ -1,0 +1,19 @@
+# =============================================================================
+# U-31 홈 디렉터리 소유자/권한 (755 이하, 타인 쓰기 금지)
+# 자동 조치: others-writable 홈 디렉터리만 vu_home_dir_max_mode 로 정규화
+# =============================================================================
+
+- name: "[U-31] 타인 쓰기(other-writable) 홈 디렉터리 발굴"
+  shell: "find /home -maxdepth 1 -type d -perm -o+w 2>/dev/null"
+  register: u31_oow
+  changed_when: false
+  failed_when: false
+
+- name: "[U-31] 홈 디렉터리 모드 정규화"
+  file:
+    path: "{{ item }}"
+    mode: "{{ vu_home_dir_max_mode | default('755') }}"
+  loop: "{{ u31_oow.stdout_lines | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  when: (u31_oow.stdout_lines | default([])) | length > 0

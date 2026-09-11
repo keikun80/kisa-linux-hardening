@@ -1,0 +1,25 @@
+# =============================================================================
+# U-45 메일 서비스(MTA) 최신 버전 점검
+# 판단 기준: 설치된 MTA(sendmail/postfix/exim)의 버전이 벤더 최신이어야 양호.
+#            EC2 인스턴스는 25포트 아웃바운드 블로킹이 기본이라, MTA 없이
+#            운영하는 편이 흔하다 — 그런 경우는 해당없음
+# =============================================================================
+
+- name: "[U-45:scan] 설치된 MTA 패키지 목록화"
+  shell: >-
+    sh -c "(rpm -qa 2>/dev/null; dpkg -l 2>/dev/null | awk '/^ii/{print $2}';
+    apk info 2>/dev/null) | grep -Ei '^(sendmail|postfix|exim)' | sort -u"
+  register: u45_mtas
+  changed_when: false
+  failed_when: false
+
+- name: "[U-45:M] MTA 인벤토리 + 사람 버전 확인 지침"
+  debug:
+    msg: |
+      설치된 MTA 패키지:
+        {{ (u45_mtas.stdout_lines | default([])) | join('\n        ') | default('-  없음 (양호)') }}
+      벤더 공지와의 대조는 사람이 확인해야 한다:
+        - sendmail: sendmail -d0.1 </dev/null | head
+        - postfix:  postconf -d mail_version ; CVE Advisories (postfix.org)
+        - exim:     exim -bV | head -2
+      ※ 아웃바운드 메일이 필요 없는 서버라면 MTA 제거(사람 검토)를 권장

@@ -1,0 +1,23 @@
+# =============================================================================
+# U-63 SUDO 명령어 접근 관리 (/etc/sudoers 소유자 root, 권한 440)
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-63"
+      paths: ["/etc/sudoers"]
+      owner: root
+      group: root
+      mode: "0440"
+      required: true
+
+- name: "[U-63:M] sudoers.d 하위 파일들도 440 이하인지 진단 (참고)"
+  shell: "find /etc/sudoers.d -type f -perm /o+W,a+r 2>/dev/null"
+  register: u63_sub
+  changed_when: false
+  failed_when: false
+
+- name: "[U-63:M] sudoers.d 리포트"
+  debug:
+    msg: "비정상 권한의 sudoers.d: {{ u63_sub.stdout_lines | default([]) | join('; ') | default('- 없음 (양호)') }}"

@@ -1,0 +1,37 @@
+# =============================================================================
+# U-32 홈 디렉토리로 지정한 디렉터리 존재 보장
+# 판단 기준: passwd 에 홈으로 적힌 경로가 실제 존재
+# 자동 조치: 부재 시 생성(생성한 것뿐이니 위험 낮음) — /home 아래, 혹은 /root
+# =============================================================================
+
+- name: "[U-32] 부재 가정(home) 목록 산출"
+  set_fact:
+    u32_missing: >-
+      {% set nav = [] %}
+      {% for u in vu_users %}
+        {% if u.home is not match('^/') or u.home in ('/', '~') %}{% continue %}{% endif %}
+        {% if u.home is match('^(\\/home|\\/root)(\\/|$)') %}
+          {% set _ = nav.append({'user': u.name, 'path': u.home, 'uid': u.uid}) %}
+        {% endif %}
+      {% endfor %}
+      {{ nav }}
+
+- name: "[U-32] home 경로 실존 확인 (stat)"
+  stat:
+    path: "{{ item.path }}"
+  register: u32_stat
+  loop: "{{ u32_missing }}"
+  loop_control:
+    label: "{{ item.user }}:{{ item.path }}"
+
+- name: "[U-32] 부재 홈 디렉터리 생성"
+  file:
+    path: "{{ item.item.path }}"
+    state: directory
+    owner: "{{ item.item.uid }}"
+    group: "{{ item.item.uid }}"
+    mode: "0755"
+  loop: "{{ u32_stat.results }}"
+  loop_control:
+    label: "{{ item.invocation.module_args.path }}"
+  when: not item.stat.exists

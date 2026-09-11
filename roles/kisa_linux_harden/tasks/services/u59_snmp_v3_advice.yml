@@ -1,0 +1,24 @@
+# =============================================================================
+# U-59 안전한 SNMP 버전(v3) 사용
+# SNMPv1/v2c 는 community 평문 → v3(authPriv) 권장.
+# 자동 전환은 모니터링 단절 리스크가 있어 진단+migration 노트로 처리.
+# =============================================================================
+
+- name: "[U-59:scan] snmpd.conf 의 버전 지표 스캔"
+  shell: >-
+    grep -Eiq "rouser|authProtocol|privProtocol" /etc/snmp/snmpd.conf 2>/dev/null
+    && echo "HAS_V3_SETTINGS" ||
+    (grep -Eiq "^(ro|rw)Community" /etc/snmp/snmpd.conf 2>/dev/null
+     && echo "LEGACY_COMMUNITY_ONLY" || echo "NO_CONF")
+  register: u59_lvl
+  changed_when: false
+  failed_when: false
+
+- name: "[U-59:M] SNMP 버전 상태 리포트"
+  debug:
+    msg: |
+      상태: {{ u59_lvl.stdout | default('?') }}
+        HAS_V3_SETTINGS     → v3 사용자 존재 (양호)
+        LEGACY_COMMUNITY_ONLY → v1/v2c 커뮤니티 사용 → v3(user + authPriv) 전환 계획 수립
+        NO_CONF             → snmpd.conf 없음 (미설치이면 양호)
+      v3 참고: createUser user1 SHA "authpass" AES "privpass"

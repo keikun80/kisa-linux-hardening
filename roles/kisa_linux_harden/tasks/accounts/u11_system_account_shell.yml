@@ -1,0 +1,28 @@
+# =============================================================================
+# U-11 시스템 계정에 로그인 셸 금지
+# Criterion: shell of system accounts such as daemon, bin, sys must be /sbin/nologin or /bin/false
+# 자동 조치: 대상이 로그인 셸을 쓰고 있으면 nologin 으로 전환
+#   대상 목록: vu_system_accounts (실서비스에 쓰이면 목록에서 빠뜨리기)
+# =============================================================================
+
+- name: "[U-11] nologin 인지 확인이 필요한 시스템 계정 추출"
+  set_fact:
+    u11_badshells: >-
+      {{ vu_users
+         | selectattr('name', 'in', vu_system_accounts)
+         | rejectattr('shell', 'in', ['', '/bin/false', '/usr/sbin/nologin', '/sbin/nologin'])
+         | list }}
+
+- name: "[U-11] 시스템 계정 셸을 nologin 으로 전환"
+  user:
+    name: "{{ item.name }}"
+    shell: /sbin/nologin
+  loop: "{{ u11_badshells }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.shell }} -> /sbin/nologin)"
+  when: u11_badshells | length > 0
+
+- name: "[U-11:M] 변환 현황 요약"
+  debug:
+    msg: "nologin 화 한 계정: {{ u11_badshells | map(attribute='name') | list }}"
+  when: u11_badshells | length > 0

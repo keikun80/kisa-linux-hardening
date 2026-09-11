@@ -1,0 +1,13 @@
+# =============================================================================
+# U-19 /etc/hosts root 소유 + 644 이하
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-19"
+      paths: ["/etc/hosts"]
+      owner: root
+      group: root
+      mode: "0644"
+      required: true

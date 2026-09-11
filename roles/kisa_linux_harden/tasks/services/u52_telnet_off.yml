@@ -1,0 +1,28 @@
+# =============================================================================
+# U-52 텔넷 서비스 비활성화 (평문 프로토콜)
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-52"
+      units: [telnet, telnetd, telnet.socket]
+
+- name: "[U-52] 텔넷 서버 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ vu_legacysvc_pkgmap.telnet | default([]) }}"
+  when: vu_legacy_service_cleanup | bool
+  failed_when: false
+
+- name: "[U-52] 23 포트 청취 과정 스냅 (residual check)"
+  shell: "ss -ltn 2>/dev/null | awk '{print $4}' | grep -E '(:|_)23\\b' || true"
+  register: u52_port
+  changed_when: false
+  failed_when: false
+
+- name: "[U-52:M] 23 포트 리포트 (닫혀있으면 양호)"
+  debug:
+    msg: "LISTEN 중인 :23 = {{ u52_port.stdout_lines | default([]) | join(',') | default('- 없음 (양호)') }}"
+  when: (u52_port.stdout_lines | default([])) | length > 0

@@ -1,0 +1,26 @@
+# ===========================================================================
+# Ubuntu 특화 프로파일 (dpkg/apt 계열, wheel 그룹이 없다)
+# ===========================================================================
+# PAM 스택(common-auth/common-password) 자동 재배치는 ssh 로그인 단절 위험이 있어
+# 기본 OFF. 필요하다면 vu_pam_strict_stack: true 로 전환 (사전 백업 필수, staging 우선).
+vu_pam_strict_stack: false
+# wheel 대체: pam_wheel 은 시스템에 존재하는 관리그룹(sudo) 기준으로 적용
+vu_su_wheel_group: sudo            # U-06
+
+vu_chrony_unit: chrony             # U-65
+vu_legacysvc_pkgmap:
+  finger: []
+  rservices: []                    # modern Ubuntu 는 r-services 패키지가 사실상 사라짐
+  tftp: [tftpd-hpa]
+  talk: []
+  telnet: [telnetd]                # 20.04 이후 패키지가 존재하는 일부 시리즈 한정
+vu_snmp_pkgs: [snmpd]              # U-58
+vu_nfs_server_pkgs: [nfs-kernel-server]  # U-39
+vu_autofs_pkgs: [autofs]           # U-41
+vu_nis_pkgs: [nslcd, nscd, ypbind] # U-43
+vu_ftp_server_pkgs: [vsftpd]       # U-54
+vu_dns_server_pkgs: [bind9]         # U-49 탐지용
+
+vu_autopatch:
+  pkg: unattended-upgrades         # U-64: 클라우드 이미지 기본 활성, 여기서는 보장
+  timer_unit: apt-daily-upgrade.timer

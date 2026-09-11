@@ -1,0 +1,6 @@
+---
+- name: "reload sshd (sshd_config 반영)"
+  systemd:
+    name: sshd
+    state: reloaded
+  when: vu_sshd_unit_exists

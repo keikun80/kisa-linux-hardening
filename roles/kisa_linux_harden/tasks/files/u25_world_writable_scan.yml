@@ -1,0 +1,27 @@
+# =============================================================================
+# U-25 world writable(누구나 쓰기 가능) 파일 점검
+# 판단 기준: 시스템 템플릿(스텁? 제외)를 제외한 ww 파일이 없어야 양호
+# 조치: 기본은 REPORT. vu_strip_world_writable=true 시 go-w bit 제거
+# =============================================================================
+
+- name: "[U-25:noscan] world-writable 파일 스캔 (제한 스코프)"
+  shell: >-
+    find {{ vu_scan_roots | join(' ') }} -xdev -type f -perm -0002 2>/dev/null
+    | head -100
+  register: u25_ww
+  changed_when: false
+  failed_when: false
+
+- name: "[U-25] world-writable bit 제거 (토클 ON 일 때만)"
+  shell: "chmod go-w {{ item }}"
+  loop: "{{ u25_ww.stdout_lines | default([]) }}"
+  changed_when: true
+  failed_when: false
+  when: vu_strip_world_writable | bool
+
+- name: "[U-25:M] 스캔 결과 리포트 (토클 OFF 시)"
+  debug:
+    msg: |
+      world-writable 파일:
+        {{ (u25_ww.stdout_lines | default([])) | join('\n    ') | default('- 없음 (양호)') }}
+      ※ 자동 제거: -e vu_strip_world_writable=true

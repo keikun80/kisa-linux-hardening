@@ -1,0 +1,26 @@
+# =============================================================================
+# U-42 불필요한 RPC(rpcbind) 서비스 비활성화
+# ※ NFS client(외부 마운트)가 rpcbind 에 의존하므로
+#   기본 OFF. 확신이 서면 vu_mask_rpcbind=true 만 활성화.
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  when: vu_mask_rpcbind | bool
+  vars:
+    fu:
+      label: "U-42"
+      units: [rpcbind]
+
+- name: "[U-42:M] rpcbind 상태 진단 (토클 OFF 일 때)"
+  shell: "systemctl is-active rpcbind 2>/dev/null || echo unknown"
+  register: u42_state
+  changed_when: false
+  failed_when: false
+
+- name: "[U-42:M] rpcbind 리포트"
+  debug:
+    msg: >-
+      rpcbind 상태: {{ u42_state.stdout | default('unknown') | trim }}
+      {{ 'active 이면 NFS/NIS 의 의존 여부를 확인 후 -e vu_mask_rpcbind=true 로 차단 진행'
+         if 'active' in (u42_state.stdout | default(''))
+         else '미작동(양호)' }}

@@ -1,0 +1,158 @@
+# =============================================================================
+# KISA 취약점 강화 (U-01 ~ U-67) — ID별 import 오케스트레이터
+#
+# 실행 예:
+#   ansible-playbook -i inventory/ec2.ini plays/site.yml --check        # 전수 감사(dry-run)
+#   ansible-playbook -i inventory/ec2.ini plays/site.yml -t u-01        # 단일 ID 실행
+#   ansible-playbook ... -t u-01 -t u-02 ...                            # 일부 ID
+#   ansible-playbook ... -t cat.accounts                                # 카테고리 단위
+#
+# 태그 규칙: 각 import 에 [u-XX, cat.<카테고리>] 를 부착.
+# 태스크명 규약: 강제 태스크는 "[U-XX] ...", 진단/안내만 하는 태스크는 "[U-XX:M] ..."
+# (audit 리포트에서 :M 는 "기계 판정 불가·사람 확인 항목"으로 분류된다)
+# =============================================================================
+
+# ----- 전처리 -----------------------------------------------------------------
+- import_tasks: 00_prep.yml
+
+# ----- 1장 계정 관리 (U-01 ~ U-13) --------------------------------------------
+- import_tasks: accounts/u01_root_remote_login.yml
+  tags: [u-01, cat.accounts]
+- import_tasks: accounts/u02_password_policy.yml
+  tags: [u-02, cat.accounts]
+- import_tasks: accounts/u03_account_lock_threshold.yml
+  tags: [u-03, cat.accounts]
+- import_tasks: accounts/u04_password_file_protection.yml
+  tags: [u-04, cat.accounts]
+- import_tasks: accounts/u05_uid_zero_guard.yml
+  tags: [u-05, cat.accounts]
+- import_tasks: accounts/u06_su_restriction.yml
+  tags: [u-06, cat.accounts]
+- import_tasks: accounts/u07_unwanted_accounts_review.yml
+  tags: [u-07, cat.accounts]
+- import_tasks: accounts/u08_admin_group_minimal.yml
+  tags: [u-08, cat.accounts]
+- import_tasks: accounts/u09_ghost_gid_membership.yml
+  tags: [u-09, cat.accounts]
+- import_tasks: accounts/u10_duplicate_uid.yml
+  tags: [u-10, cat.accounts]
+- import_tasks: accounts/u11_system_account_shell.yml
+  tags: [u-11, cat.accounts]
+- import_tasks: accounts/u12_session_timeout.yml
+  tags: [u-12, cat.accounts]
+- import_tasks: accounts/u13_secure_hash_algo.yml
+  tags: [u-13, cat.accounts]
+
+# ----- 2장 파일·디렉터리 (U-14 ~ U-33) -----------------------------------------
+- import_tasks: files/u14_env_file_perms.yml
+  tags: [u-14, cat.files]
+- import_tasks: files/u15_nouser_nogroup_scan.yml
+  tags: [u-15, cat.files]
+- import_tasks: files/u16_passwd_perms.yml
+  tags: [u-16, cat.files]
+- import_tasks: files/u17_boot_scripts_perms.yml
+  tags: [u-17, cat.files]
+- import_tasks: files/u18_shadow_perms.yml
+  tags: [u-18, cat.files]
+- import_tasks: files/u19_hosts_perms.yml
+  tags: [u-19, cat.files]
+- import_tasks: files/u20_xinetd_perms.yml
+  tags: [u-20, cat.files]
+- import_tasks: files/u21_syslog_perms.yml
+  tags: [u-21, cat.files]
+- import_tasks: files/u22_services_file_perms.yml
+  tags: [u-22, cat.files]
+- import_tasks: files/u23_suid_sgid_audit.yml
+  tags: [u-23, cat.files]
+- import_tasks: files/u24_home_env_perms.yml
+  tags: [u-24, cat.files]
+- import_tasks: files/u25_world_writable_scan.yml
+  tags: [u-25, cat.files]
+- import_tasks: files/u26_dev_regular_files.yml
+  tags: [u-26, cat.files]
+- import_tasks: files/u27_r_commands_removal.yml
+  tags: [u-27, cat.files]
+- import_tasks: files/u28_network_access_control.yml
+  tags: [u-28, cat.files]
+- import_tasks: files/u29_hosts_lpd_perms.yml
+  tags: [u-29, cat.files]
+- import_tasks: files/u30_umask_policy.yml
+  tags: [u-30, cat.files]
+- import_tasks: files/u31_home_dir_perms.yml
+  tags: [u-31, cat.files]
+- import_tasks: files/u32_home_dir_existence.yml
+  tags: [u-32, cat.files]
+- import_tasks: files/u33_hidden_files_audit.yml
+  tags: [u-33, cat.files]
+
+# ----- 3장 서비스 관리 (U-34 ~ U-62) -------------------------------------------
+- import_tasks: services/u34_finger_off.yml
+  tags: [u-34, cat.services]
+- import_tasks: services/u35_anonymous_ftp_restriction.yml
+  tags: [u-35, cat.services]
+- import_tasks: services/u36_r_services_off.yml
+  tags: [u-36, cat.services]
+- import_tasks: services/u37_cron_control_perms.yml
+  tags: [u-37, cat.services]
+- import_tasks: services/u38_dos_prone_services_off.yml
+  tags: [u-38, cat.services]
+- import_tasks: services/u39_nfs_off.yml
+  tags: [u-39, cat.services]
+- import_tasks: services/u40_nfs_access_control.yml
+  tags: [u-40, cat.services]
+- import_tasks: services/u41_autofs_off.yml
+  tags: [u-41, cat.services]
+- import_tasks: services/u42_rpc_off.yml
+  tags: [u-42, cat.services]
+- import_tasks: services/u43_nis_off.yml
+  tags: [u-43, cat.services]
+- import_tasks: services/u44_tftp_talk_off.yml
+  tags: [u-44, cat.services]
+- import_tasks: services/u45_mail_version_review.yml
+  tags: [u-45, cat.services]
+- import_tasks: services/u46_general_mail_execution_block.yml
+  tags: [u-46, cat.services]
+- import_tasks: services/u47_spam_relay_restriction.yml
+  tags: [u-47, cat.services]
+- import_tasks: services/u48_expn_vrfy_limits.yml
+  tags: [u-48, cat.services]
+- import_tasks: services/u49_dns_version_review.yml
+  tags: [u-49, cat.services]
+- import_tasks: services/u50_dns_zone_transfer_control.yml
+  tags: [u-50, cat.services]
+- import_tasks: services/u51_dns_dynamic_update_block.yml
+  tags: [u-51, cat.services]
+- import_tasks: services/u52_telnet_off.yml
+  tags: [u-52, cat.services]
+- import_tasks: services/u53_ftp_information_hide.yml
+  tags: [u-53, cat.services]
+- import_tasks: services/u54_clear_ftp_off.yml
+  tags: [u-54, cat.services]
+- import_tasks: services/u55_ftp_account_shell.yml
+  tags: [u-55, cat.services]
+- import_tasks: services/u56_ftp_access_control.yml
+  tags: [u-56, cat.services]
+- import_tasks: services/u57_ftpusers_config.yml
+  tags: [u-57, cat.services]
+- import_tasks: services/u58_snmp_daemon_off.yml
+  tags: [u-58, cat.services]
+- import_tasks: services/u59_snmp_v3_advice.yml
+  tags: [u-59, cat.services]
+- import_tasks: services/u60_snmp_community_strength.yml
+  tags: [u-60, cat.services]
+- import_tasks: services/u61_snmp_access_control.yml
+  tags: [u-61, cat.services]
+- import_tasks: services/u62_motd_warning.yml
+  tags: [u-62, cat.services]
+
+# ----- 4장~5장 패치·로그·시계 (U-63 ~ U-67) -------------------------------------
+- import_tasks: lifecycle/u63_sudoers_mgmt.yml
+  tags: [u-63, cat.lifecycle]
+- import_tasks: lifecycle/u64_recurring_security_patches.yml
+  tags: [u-64, cat.lifecycle]
+- import_tasks: lifecycle/u65_time_synchronization.yml
+  tags: [u-65, cat.lifecycle]
+- import_tasks: lifecycle/u66_logging_setup.yml
+  tags: [u-66, cat.lifecycle]
+- import_tasks: lifecycle/u67_log_dir_perms.yml
+  tags: [u-67, cat.lifecycle]

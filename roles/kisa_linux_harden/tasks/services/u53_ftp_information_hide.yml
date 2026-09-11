@@ -1,0 +1,16 @@
+# =============================================================================
+# U-53 FTP 서비스 정보 노출 제한 (banner 미노출)
+# vsftpd: pasv_announce? — banner 은 ftptd_banner="" 로 비공개
+# =============================================================================
+
+- name: "[U-53] VsFtpD 배너를 은닉 문자열로 교체 (버전 정보 노출 방지)"
+  lineinfile:
+    path: /etc/vsftpd/vsftpd.conf
+    regexp: "^#?ftp_banner"
+    line: "ftp_banner=Ready."
+  when: stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)
+
+- name: "[U-53:M] FTP 서버 설정이 없으면 해당 없음"
+  debug:
+    msg: "VsFtpD 미설치(혹은 설정 파일 없음) — 배너 문제 해당 없음"
+  when: not stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)

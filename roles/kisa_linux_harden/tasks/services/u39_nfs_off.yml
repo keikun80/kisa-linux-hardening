@@ -1,0 +1,19 @@
+# =============================================================================
+# U-39 불필요한 NFS(server) 서비스 비활성화
+# ※ NFS client(외부 마운트)를 사용하는 케이스라면 U-42의 rpcbind mask
+#   와 함께 신중히. 이 ID는 SERVER 역할 대상.
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-39"
+      units: [nfs-server, nfs, nfsv4, rpc-mountd, mountd]
+
+- name: "[U-39] NFS 서버 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ vu_nfs_server_pkgs | default([]) }}"
+  when: vu_legacy_service_cleanup | bool
+  failed_when: false

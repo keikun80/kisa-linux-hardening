@@ -1,0 +1,14 @@
+# =============================================================================
+# U-37 crontab 접근 제어 파일(cron.allow/deny) 권한
+# 판단 기준: 640 이하 root
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-37"
+      paths: ["/etc/cron.allow", "/etc/cron.deny"]
+      owner: root
+      group: root
+      mode: "0640"
+      required: false

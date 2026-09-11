@@ -1,0 +1,14 @@
+# =============================================================================
+# U-17 시스템 부팅 스크립트 (init.d / rc.local 계열) 권한
+# Criterion: owned by root, unwritable by others
+# 현대 systemd 배포에서는 대부분 미존재 → 찾으면 정규화, 아니면 해당없음
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-17"
+      paths: ["/etc/rc.d/init.d", "/etc/rc.local", "/etc/init.d/network"]
+      owner: root
+      mode: "0755"
+      required: false

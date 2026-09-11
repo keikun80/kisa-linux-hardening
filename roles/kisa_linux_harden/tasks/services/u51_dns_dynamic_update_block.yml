@@ -1,0 +1,24 @@
+# =============================================================================
+# U-51 DNS 동적 업데이트(allow-update) 취약 설정 금지
+# 판단 기준: allow-update = any 금물
+# =============================================================================
+
+- name: "[U-51:scan] allow-update 선언 수집"
+  shell: >-
+    sh -c "grep -rEin 'allow[-_]update' /etc/named.conf /etc/named.conf.d/ /etc/bind/ 2>/dev/null | grep -v '^\s*#' || true"
+  register: u51_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[U-51] 위험 선언(any) 추출"
+  set_fact:
+    u51_risky: >-
+      {{ u51_raw.stdout_lines | default([])
+         | select('search', '=\\s*any\\s*;|\\bany\\b') | list }}
+
+- name: "[U-51:M] Dynamic-Update 상태 리포트"
+  debug:
+    msg: >-
+      {{ '위험 선언 발견 — "none;" 이나 제한된 뷰로 사람 수정: '
+         ~ (u51_risky | join(' ; ')) if u51_risky | length > 0
+         else '위험한 allow-update(any) 없음 (양호 / named 미구동도 포함)' }}

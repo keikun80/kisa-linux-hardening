@@ -1,0 +1,13 @@
+# =============================================================================
+# U-18 /etc/shadow 소유자 root + 권한 400 이하
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-18"
+      paths: ["/etc/shadow"]
+      owner: root
+      group: root
+      mode: "0400"
+      required: true

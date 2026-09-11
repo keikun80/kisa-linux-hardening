@@ -1,0 +1,26 @@
+# =============================================================================
+# U-54 무암호 클라이언트 FTP 서비스 비활성화 (SFTP 권고)
+# 기본 ON — vsftpd 중단 + mask. (패키지 제거는 legacy_cleanup 토클)
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  when: vu_disable_plaintext_ftp | bool
+  vars:
+    fu:
+      label: "U-54"
+      units: [vsftpd]
+
+- name: "[U-54] vsftpd 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ vu_ftp_server_pkgs | default([]) }}"
+  when:
+    - vu_disable_plaintext_ftp | bool
+    - vu_legacy_service_cleanup | bool
+  failed_when: false
+
+- name: "[U-54:M] 중간단계 토클 OFF — 사람 판단 필요"
+  debug:
+    msg: "무암호 FTP(vu_disable_plaintext_ftp)를 끄기로 했음. 서비스 필요성을 사람이 재확인한 뒤 ON 권장"
+  when: not (vu_disable_plaintext_ftp | bool)

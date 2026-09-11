@@ -1,0 +1,14 @@
+# =============================================================================
+# U-29 /etc/hosts.lpd root + 600
+#_printer 데몬의 프린트 큐 설정. 현대 배포에서 흔치 않음 → 있으면만
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-29"
+      paths: ["/etc/hosts.lpd"]
+      owner: root
+      group: root
+      mode: "0600"
+      required: false

@@ -1,0 +1,26 @@
+# =============================================================================
+# U-65 NTP/시계 동기화 서비스 활성화 (chrony)
+#   EC2 암이 이미 Amazon Time Service(169.254.169.123 계열)를 source 로
+#   들고 나오는 경우가 많다 — 이 놀이가 하는 일은 chrony 설치 + 기동 보장.
+# =============================================================================
+
+- name: "[U-65] chrony 패키지 설치"
+  package:
+    name: chrony
+    state: present
+
+- name: "[U-65] chrony 서비스 시작 + 부팅 시작"
+  systemd:
+    name: "{{ vu_chrony_unit | default('chronyd') }}"
+    state: started
+    enabled: true
+
+- name: "[U-65] chronyc tracking 조회 (참고)"
+  shell: "chronyc tracking 2>/dev/null | grep -E 'System time|Last offset' || echo 'chronyc response none'"
+  register: u65_track
+  changed_when: false
+  failed_when: false
+
+- name: "[U-65:M] 싱크 상태 리포트"
+  debug:
+    msg: "chronyc tracking: {{ u65_track.stdout_lines | default([]) | join(' | ') }}"

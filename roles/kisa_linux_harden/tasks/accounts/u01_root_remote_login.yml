@@ -1,0 +1,30 @@
+# =============================================================================
+# U-01 root 계정 원격 접속 제한
+# 판단 기준 (KISA 2026 가이드):
+#   양호 : sshd_config(및 drop-in)에서 PermitRootLogin no, securetty에 pts/x 없음
+#   취약 : PermitRootLogin yes 또는 미설정, securetty에 pts 등록
+# 자동 조치: sshd_config.d 최우선 drop-in + 본 파일 병렬로 no 강제
+# =============================================================================
+
+- name: "[U-01] 최우선 drop-in 으로 root 원격 로그인 거부"
+  copy:
+    dest: /etc/ssh/sshd_config.d/00-kisa-hardening.conf
+    content: "PermitRootLogin no\n"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: "reload sshd (sshd_config 반영)"
+
+- name: "[U-01] sshd_config 본문에도 no 주입 (drop-in 의존 방지)"
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: ">>>> kisa-u-01 {mark} <<<<"
+    block: "PermitRootLogin no"
+  notify: "reload sshd (sshd_config 반영)"
+
+- name: "[U-01:M] securetty 에 pts 행 잔존 스냅 (사람 확인 필요)"
+  shell: grep -Eq '^[[:space:]]*pts/' /etc/securetty && echo FOUND || echo CLEAN
+  register: u01_pts
+  changed_when: false
+  failed_when: false
+  when: stat(path=/etc/securetty).stat.exists | default(false)

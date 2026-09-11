@@ -1,0 +1,36 @@
+# =============================================================================
+# U-09 존재하지 않는 계정이 포함된 GID(그룹 멤버) 금지
+# 판단 기준: /etc/group 의 멤버 필드에 passwd 에 없는 아이디가 없어야 함
+# 조치: ghost 멤버의 이름을 뽑아 리포트; 자동 편집은 파일 충돌 위험이 있어
+#       그룹명/멤버 수치를 바탕으로 사람이 처분한다 (visudo/grpck -y 유사 패턴)
+# =============================================================================
+
+- name: "[U-09]_passwd 유저 셋"
+  set_fact:
+    u09_valid_users: "{{ vu_users | map(attribute='name') | list }}"
+
+- name: "[U-09] 그룹 멤버 중 존재하지 않는 아이디 추출"
+  set_fact:
+    u09_ghosts: >-
+      {% set nav = [] %}
+      {% for l in lookup('file', '/etc/group').splitlines() %}
+        {% if ':' in l %}
+          {% set gs = l.split(':') %}
+          {% if gs | length > 3 and gs[3] != '' %}
+            {% for m in gs[3].split(',') %}
+              {% if m != '' and m not in u09_valid_users %}
+                {% set _ = nav.append(gs[0] ~ ' <- ' ~ m) %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {{ nav }}
+
+- name: "[U-09:M] Ghost member report(remove determined by person)"
+  debug:
+    msg: >-
+      {{ '존재하지 않는 멤버 발견: ' ~ u09_ghosts | join(' ; ')
+         if u09_ghosts | length > 0
+         else 'ghost 멤버 없음 (양호)' }}
+      처분 예: gpasswd -d <member> <group>

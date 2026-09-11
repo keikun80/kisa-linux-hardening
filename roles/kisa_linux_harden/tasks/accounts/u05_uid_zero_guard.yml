@@ -1,0 +1,39 @@
+# =============================================================================
+# U-05 root 이외의 UID '0' 계정 금지
+# 판단 기준: UID 0 은 root 단독
+# 자동 조치(고위험, 기본 OFF: vu_lock_extra_uid0): 격리(잠금+nologin+초기화 강제)
+#   자동 삭제는 하지 않으며, 계정 생성 경위 확인 후 사람이 처분하도록 유도한다.
+# =============================================================================
+
+- name: "[U-05] UID 0 보유 계정 산출 (root 제외)"
+  set_fact:
+    u05_intruders: "{{ vu_users | selectattr('uid', 'equalto', 0) | rejectattr('name', 'equalto', 'root') | list }}"
+
+- name: "[U-05] 침입/이슈 계정 격리: 잠금 + nologin + 패스워드 초기화 강제"
+  user:
+    name: "{{ item.name }}"
+    password_lock: true
+    shell: /usr/sbin/nologin
+  loop: "{{ u05_intruders }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - vu_lock_extra_uid0 | bool
+    - u05_intruders | length > 0
+
+- name: "[U-05] 격리 계정 로그인 시 패스워드 초기화 플래그"
+  command: "chage -d 0 {{ item.name }}"
+  loop: "{{ u05_intruders }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: true
+  when:
+    - vu_lock_extra_uid0 | bool
+    - u05_intruders | length > 0
+
+- name: "[U-05:M] root 외에 UID 0 이면 즉시 조사 (격리 토글 상태 표기)"
+  debug:
+    msg: >-
+      root 외 UID-0 계정 발견: {{ u05_intruders | map(attribute='name') | list }} —
+      {{ '격리 완료됨(토클 ON)' if (vu_lock_extra_uid0|bool) else '아직 보고만 함 (격리하려면 -e vu_lock_extra_uid0=true)' }}
+  when: u05_intruders | length > 0

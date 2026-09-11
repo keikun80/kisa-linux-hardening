@@ -1,0 +1,25 @@
+# =============================================================================
+# U-30 UMASK 관리 (022 이상 권장, 여기서는 027 적용)
+# 자동 조치: /etc/profile.d/z98-kisa-umask.sh 를 통해 로그인 셸.umask 강제
+# =============================================================================
+
+- name: "[U-30] 공용 umask 스냅 장착"
+  copy:
+    dest: /etc/profile.d/z98-kisa-umask.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # KISA U-30 - 기본 생성 파일 권한 마스크
+      umask {{ vu_umask }}
+
+- name: "[U-30:M] login.defs UMASK 라인 진단 (참고)"
+  shell: grep -E '^\s*UMASK' /etc/login.defs 2>/dev/null | head -1
+  register: u30_ld
+  changed_when: false
+  failed_when: false
+
+- name: "[U-30:M] Query for current UMASK value in login.defs"
+  debug:
+    msg: "login.defs 의 UMASK 정의: {{ u30_ld.stdout | default('없음 (프로필d 주도)') }}"
+  when: u30_ld.stdout | default('') | trim | length > 0

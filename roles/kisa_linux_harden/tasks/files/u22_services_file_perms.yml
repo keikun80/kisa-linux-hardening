@@ -1,0 +1,13 @@
+# =============================================================================
+# U-22 /etc/services root + 644 이하
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-22"
+      paths: ["/etc/services"]
+      owner: root
+      group: root
+      mode: "0644"
+      required: true

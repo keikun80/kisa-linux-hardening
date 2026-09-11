@@ -1,0 +1,35 @@
+# =============================================================================
+# U-56 FTP 서비스 접근 제어 (ftpusers 거절 목록)
+# Only effective if vsftpd is installed.
+#   ftpusers(기본 option) = 로그인을 거부하는 계정 블랙리스트
+#   → 표준 두 경로(/etc/vsftpd/ftpusers, /etc/ftpusers) 모두 배포
+# =============================================================================
+
+- name: "[U-56] Ftpusers 블랙리스트 배치 (vsftpd 설치 시에만)"
+  copy:
+    dest: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      # KISA U-56 - FTP 로그인 거부 목록
+      {{ (['root', 'bin', 'daemon', 'adm', 'lp', 'sync', 'shutdown', 'halt',
+           'mail', 'operator', 'games', 'ftp', 'nobody']
+          | union(vu_ftp_blocked_users | default([])))
+         | unique | join('\n') }}
+  loop:
+    - /etc/vsftpd/ftpusers
+    - /etc/ftpusers
+  when: stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)
+
+- name: "[U-56] VsFtpD 설정에서 Ftpusers 경로 유지 (option 검증용)"
+  lineinfile:
+    path: /etc/vsftpd/vsftpd.conf
+    regexp: "^#?ftpusers"
+    line: "ftpusers=/etc/vsftpd/ftpusers"
+  when: stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)
+
+- name: "[U-56:M] VsFtpD 미설치 리포트"
+  debug:
+    msg: "VsFtpD 미설치 — FTP 접근 제어는 해당 없음"
+  when: not stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)

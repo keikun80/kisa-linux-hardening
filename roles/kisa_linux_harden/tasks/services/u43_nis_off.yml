@@ -1,0 +1,17 @@
+# =============================================================================
+# U-43 NIS(NIS+) 서비스(yppasswdd/ypserv) 점검 — 실행 중이면 안 됨
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-43"
+      units: [ypserv, yppasswdd, ypxfrd, ypbind]
+
+- name: "[U-43] NIS 계열 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ vu_nis_pkgs | default([]) }}"
+  when: vu_legacy_service_cleanup | bool
+  failed_when: false

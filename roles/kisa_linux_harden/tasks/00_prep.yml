@@ -1,0 +1,120 @@
+# =============================================================================
+# [PREP] 전처리 — 권한·팩트 수집·백업 루트·고위험 토글 알림
+# =============================================================================
+
+# 환경의 gathered_subset=minimal 류 트리밍(기업 템플릿/환경변수)을 받지 않기 위해,
+# 핵심 팩트가 빠져 있으면 여기서 전체 수집(setup filter=*)을 한 번 더 강제한다.
+- name: "[PREP] 팩트 수집 보정 (축소된 gathered_subset 대응)"
+  setup:
+    filter: "*"
+  when: ansible_effective_user is not defined
+  tags: [always]
+
+- name: "[PREP] 루트 권한 사전조건 확인"
+  assert:
+    that: ansible_effective_user is defined and ansible_effective_user == 'root'
+    fail_msg: >-
+      이 플레이북은 root 권한으로 실행되어야 합니다.
+      실행 시 --become (또는 become_user) 옵션을 지정하십시오.
+  tags: [always]
+
+- name: "[PREP] 계정 DB 원본 수집 (/etc/passwd·/etc/shadow·/etc/group — 원격에서)"
+  slurp:
+    src: "{{ item }}"
+  register: vu_db_src
+  loop:
+    - /etc/passwd
+    - /etc/shadow
+    - /etc/group
+  failed_when: false
+  tags: [always]
+
+- name: "[PREP] 사용자 데이터베이스 로드 (/etc/passwd 파싱)"
+  set_fact:
+    vu_users: >-
+      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/passwd') | list | first).content | default('') | b64decode %}
+      {% set nav = [] %}
+      {% for l in src.splitlines() | select('match', '^.+') %}
+        {% set _ = nav.append({
+          'name': l.split(':')[0],
+          'uid': l.split(':')[2] | int | default(l.split(':')[2]),
+          'home': l.split(':')[5],
+          'shell': l.split(':')[6]
+        }) %}
+      {% endfor %}
+      {{ nav }}
+  tags: [always]
+
+- name: "[PREP] 약한 해시(MD5) 사용 중인 계정 프로빙 (U-13 참조)"
+  set_fact:
+    vu_md5_users: >-
+      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/shadow') | list | first).content | default('') | b64decode %}
+      {% set nav = [] %}
+      {% for l in src.splitlines() | select('match', '^.:') %}
+        {% set f = l.split(':') %}
+        {% if f | length > 1 and f[1] is match('^\\$1\\$') %}
+          {% set _ = nav.append(f[0]) %}
+        {% endif %}
+      {% endfor %}
+      {{ nav }}
+  tags: [always]
+
+- name: "[PREP] wheel GID 조회 (U-06 su 제한)"
+  set_fact:
+    vu_wheel_gid: >-
+      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/group') | list | first).content | default('') | b64decode %}
+      {% set g = None %}
+      {% for l in src.splitlines() %}
+        {% if l.startswith('wheel:') %}{% set g = l.split(':')[2] | int %}{% endif %}
+      {% endfor %}
+      {{ g }}
+  tags: [always]
+
+- name: "[PREP] 백업 루트 디렉터리 확보"
+  file:
+    path: "{{ vu_backups_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  tags: [always]
+
+- name: "[PREP] sshd 유닛 존재 여부 확인"
+  stat:
+    path: "{{ item }}"
+  register: vu_sshd_stat
+  loop:
+    - /etc/systemd/system/sshd.service
+    - /usr/lib/systemd/system/sshd.service
+    - /lib/systemd/system/sshd.service
+  tags: [always]
+
+- name: "[PREP] vu_sshd_unit_exists 팩트 계산"
+  set_fact:
+    vu_sshd_unit_exists: "{{ vu_sshd_stat.results | selectattr('stat.exists') | list | length > 0 }}"
+  tags: [always]
+
+- name: "[PREP] 활성 고위험 토글 집계"
+  set_fact:
+    vu_enabled_high_risk: >-
+      [ {% for kv in [
+          ('vu_pam_strict_stack', 'PAM 스택 직접 조작(U-02/U-03)'),
+          ('vu_manage_host_firewall', '호스트 방화벽 활성화(U-28)'),
+          ('vu_legacy_service_cleanup', '레거시 패키지 제거(U-36등)'),
+          ('vu_mask_rpcbind', 'rpcbind 봉쇄(U-42)'),
+          ('vu_lock_extra_uid0', 'UID-0 여분 계정 격리(U-05)'),
+          ('vu_apply_dup_uid', '중복 UID 재할당(U-10)'),
+          ('vu_strip_world_writable', 'ww-bit 자동 제거(U-25)'),
+          ('vu_del_ftp_pub_dir', '/var/ftp/pub 삭제(U-35)'),
+          ('vu_nfs_manage_exports', '/etc/exports 재생성(U-40)')] %}
+      {% if vars[kv[0]] | default(false) | bool %}'{{ kv[1] }}',{% endif %}
+      {%- endfor %} ] | select('match', '.') | list
+  tags: [always]
+
+- name: "[PREP] 고위험 토글 알림"
+  debug:
+    msg: >-
+      !!! HIGH-RISK TOGGLE ENABLED — 백업/스테이징 완료가 필요합니다:
+      {{ vu_enabled_high_risk | join(', ') }}
+  when: vu_enabled_high_risk | length > 0
+  tags: [always]

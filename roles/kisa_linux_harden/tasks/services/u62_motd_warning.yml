@@ -1,0 +1,22 @@
+# =============================================================================
+# U-62 로그인 시 경고 메시지 설정
+# 판단 기준: /etc/motd 에 실질적 내용이 존재(빈 파일 아님)
+# =============================================================================
+
+- name: "[U-62] /etc/motd 경고 메시지 설치"
+  copy:
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ vu_motd_text }}"
+
+- name: "[U-62] motd.size 확인 (내용 존재 보장)"
+  stat:
+    path: /etc/motd
+  register: u62_stat
+
+- name: "[U-62] 내용 확인"
+  assert:
+    that: u62_stat.stat.exists and (u62_stat.stat.size | int) > 0
+    fail_msg: "/etc/motd 가 비어 있음"

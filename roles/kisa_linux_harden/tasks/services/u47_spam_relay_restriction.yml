@@ -1,0 +1,21 @@
+# =============================================================================
+# U-47 스팸 메일 릴레이 제한 (closed relay)
+# sendmail: RelayDeny / smarthost 정책. postifix 는 릴레이 제어가 기본
+#           허가제(relay Restrictions) 구조라서 탐지로 충분
+# =============================================================================
+
+- name: "[U-47:probe] 릴레이 제한 관련 설정 라인 탐지"
+  shell: >-
+    { grep -Eiq 'relayruleset|smarthost' /etc/mail/sendmail.cf 2>/dev/null
+      && echo SENDMAIL_RELAY_SET; }
+    { test -f /etc/postfix/main.cf && grep -Eiq 'relay_restriction' /etc/postfix/main.cf 2>/dev/null
+      && echo POSTFIX_POLICY_SET; }
+  register: u47_state
+  changed_when: false
+  failed_when: false
+
+- name: "[U-47:M] 릴레이 상태 리포트"
+  debug:
+    msg: >-
+      릴레이 제어 증거: {{ u47_state.stdout_lines | default([]) | join(' / ')
+                           | default('없음 — MTA 가 없는 서버라면 양호. MTA 가 돌아가면 사람 정책 수립') }}

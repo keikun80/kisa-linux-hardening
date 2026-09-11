@@ -1,0 +1,23 @@
+# =============================================================================
+# U-13 안전한 비밀번호 암호화 알고리즘 사용
+# 판단 기준: ENCRYPT_METHOD SHA512 (또는 SHA256)
+# 자동 조치: /etc/login.defs 의 ENCRYPT_METHOD 강제한력화;
+#            기존 MD5 해시 사용자는 목록만 보고 (재설정 유도)
+# =============================================================================
+
+- name: "[U-13] login.defs 해시 알고리즘 고정"
+  lineinfile:
+    path: /etc/login.defs
+    regexp: "^#?\\s*ENCRYPT_METHOD"
+    line: "ENCRYPT_METHOD {{ vu_encryption_method }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: "[U-13:M] MD5 등 취약 해시로 남은 기존 계정 보고"
+  debug:
+    msg: >-
+      Remaining weak hashes (maintained until next password change):
+      {{ vu_md5_users | default([]) | join(', ') | default('없음') }}
+      — 해당 계정의 패스워드 초기화를 권장합니다.

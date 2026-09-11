@@ -1,0 +1,87 @@
+# =============================================================================
+# U-64 정기적 보안 패치 자동화
+#   RHEL 계열 : dnf-automatic 타이머 (security 범위만)
+#   Debian    : unattended-upgrades
+# 전체 업그레이드는 수행하지 않음 (서비스 열화 방지). vu_autopatch_security=false 로 비활성화.
+# =============================================================================
+
+# ---------------- RHEL 계열 (AL2023/Fedora) ----------------------------------
+- name: "[U-64] dnf 자동패치 패키지 설치"
+  package:
+    name: "{{ vu_autopatch.pkg }}"
+    state: present
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+
+- name: "[U-64] dnf 자동패치 설정 파일 생성(security만)"
+  copy:
+    dest: /etc/dnf/automatic.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [commands]
+      apply_updates = False
+      upgrade_type = security
+      random_interval = 0
+
+      [emails]
+      email_from = root
+      email_to =
+
+      [statistics]
+      system_cachedir = /var/cache/dnf-automatic
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+
+- name: "[U-64] dnf 자동패치 타이머 기동"
+  systemd:
+    name: "{{ vu_autopatch.timer_unit }}"
+    state: started
+    enabled: true
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+
+# ---------------- Debian 계열 (Ubuntu) ----------------------------------------
+- name: "[U-64] unattended-upgrades 패키지 설치"
+  package:
+    name: "{{ vu_autopatch.pkg }}"
+    state: present
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+- name: "[U-64] apt 주기적 업그레이드 설정"
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+- name: "[U-64] apt daily 타이머들 기동"
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - apt-daily.timer
+    - "{{ vu_autopatch.timer_unit }}"
+  when:
+    - vu_autopatch_security | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+- name: "[U-64:M] 자동 패치가 꺼져 있는 상태 리포트"
+  debug:
+    msg: >-
+      vu_autopatch_security=false — 주기적 보안 패치가 비활성입니다.
+      패치 히스토리 위치: /var/log/dnf.rpm.log, /var/log/unattended-upgrades/
+  when: not (vu_autopatch_security | bool)

@@ -1,0 +1,23 @@
+# ===========================================================================
+# Fedora 특화 프로파일 (dnf/rpm 계열, wheel 그룹 보유)
+# ===========================================================================
+vu_pam_strict_stack: true          # U-02/U-03 PAM 조치 기본 자동 적용
+vu_su_wheel_group: wheel           # U-06
+
+vu_chrony_unit: chronyd            # U-65
+vu_legacysvc_pkgmap:
+  finger: []
+  rservices: [rsh-server, rsh-client, rlogin]
+  tftp: [tftp-server]
+  talk: []
+  telnet: [telnet]
+vu_snmp_pkgs: [net-snmp, net-snmpd]   # U-58
+vu_nfs_server_pkgs: [nfs-utils]       # U-39
+vu_autofs_pkgs: [autofs]              # U-41
+vu_nis_pkgs: [nis]                    # U-43
+vu_ftp_server_pkgs: [vsftpd]          # U-54
+vu_dns_server_pkgs: [bind]             # U-49 탐지용
+
+vu_autopatch:
+  pkg: dnf-automatic               # U-64
+  timer_unit: dnf-automatic.timer

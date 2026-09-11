@@ -1,0 +1,28 @@
+# =============================================================================
+# U-12 유휴 세션 자동 종료를 위한 TMOUT 설정
+# 판단 기준: TMOUT <= 600 초
+# 자동 조치: /etc/profile.d/z99-kisa-tmout.sh 설치 (알파벳순 끝에 위치시켜
+#            앞서 불러오는 옛 TMOUT 값보다 나중에 ours 값이 먹히도록 함)
+# =============================================================================
+
+- name: "[U-12] 공유 TMOUT 정의 스티커 설치"
+  copy:
+    dest: /etc/profile.d/z99-kisa-tmout.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # KISA U-12 - 유휴 셸 세션 자동 로그아웃
+      TMOUT={{ vu_tmout_sec }}
+      readonly TMOUT
+
+- name: "[U-12:M] 기존 TMOUT 정의가 있는지 진단 (큰 값이면 사람 조정 필요)"
+  shell: grep -Rh "^TMOUT=" /etc/profile /etc/bashrc /etc/profile.d/ 2>/dev/null | sort -t= -k2 -rn | head -3
+  register: u12_existing
+  changed_when: false
+  failed_when: false
+
+- name: "[U-12:M] 기존 TMOUT 정의 리포트"
+  debug:
+    msg: "기존 TMOUT 정의: {{ u12_existing.stdout_lines | default([]) | join(' | ') | default('-') }}"
+  when: u12_existing.stdout | default('') | trim | length > 0

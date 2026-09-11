@@ -1,0 +1,19 @@
+# =============================================================================
+# U-26 /dev 에 존재하지 말아야 할 일반(device 외) 파일
+# 판단 기준: /dev 하의 -type f 가 없거나 백업 파일 외는 양호
+# 악성코드 은닉 포인트이므로 리포트 + 사람 삭제 판단
+# =============================================================================
+
+- name: "[U-26] Listing of regular files inside /dev"
+  shell: "find /dev -maxdepth 3 -type f 2>/dev/null"
+  register: u26_files
+  changed_when: false
+  failed_when: false
+
+- name: "[U-26:M] 리포트"
+  debug:
+    msg: >-
+      /dev 의 일반 파일:
+      {{ (u26_files.stdout_lines | default([])) | join('\n    ')
+         | default('- 없음 (양호)') }}
+      ※ 의심되는 파일은 provenance(trace) 확보 후 삭제를 사람이 결정

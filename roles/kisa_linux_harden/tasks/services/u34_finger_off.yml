@@ -1,0 +1,19 @@
+# =============================================================================
+# U-34 Finger 서비스 비활성화 (정보 노출 서비스)
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-34"
+      units: [finger, xfinger, fingerd]
+
+- name: "[U-34] finger 패키지 제거 (토클 ON)"
+  package:
+    name: finger
+    state: absent
+  when:
+    - vu_legacy_service_cleanup | bool
+    - vu_legacysvc_pkgmap.finger | length > 0
+  loop: "{{ vu_legacysvc_pkgmap.finger }}"
+  failed_when: false

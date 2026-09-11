@@ -1,0 +1,23 @@
+# =============================================================================
+# U-46 일반 사용자의 메일 서비스(sendmail 쿼리) 실행 방지 — restrictqrun
+# sendmail_cf 에 restrictqrun 설정이 있거나, MTA 자체를 실행시키지 않는 것이 양호.
+# 최근의 POSTFIX로는 sendmail_cf 라는 개념이 없으므로 탐지 + 진단으로 처리.
+# =============================================================================
+
+- name: "[U-46:noprobe] sendmail_cf 존재 여부 확인"
+  stat:
+    path: /etc/mail/sendmail.cf
+  register: u46_cf
+
+- name: "[U-46] restrictqrun 지정 (sendmail_cf 존재 시)"
+  lineinfile:
+    path: /etc/mail/sendmail.cf
+    regexp: "^O\\s+QueueRun"
+    line: "O QueueRun=root"
+  when: u46_cf.stat.exists | default(false)
+
+- name: "[U-46:M] sendmail 미사용이면 해당 없음 / 그렇지 않으면 사람 검토"
+  debug:
+    msg: >-
+      {{ 'sendmail_cf 가 없습니다 — sendmail 기반 MTA 아님을 의미(양호).' if not u46_cf.stat.exists
+         else 'sendmail_cf 있음. O QueueRun=root 이 위에서 보장되었음.' }}

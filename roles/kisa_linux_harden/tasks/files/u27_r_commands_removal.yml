@@ -1,0 +1,37 @@
+# =============================================================================
+# U-27 r-커맨드 자격 파일(hosts.equiv / .rhosts) 금지
+# 판단 기준: 파일이 없어야 양호
+# 자동 조치: 안전 축이라 삭제 (서비스 비활성화는 U-36)
+# =============================================================================
+
+- name: "[U-27] r-커맨드 자격 파일 제거"
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/hosts.equiv
+    - /root/.rhosts
+
+- name: "[U-27] /home 존재 확인"
+  stat:
+    path: /home
+  register: u27_home
+
+- name: "[U-27] 홈 디렉터리 .rhosts 열거"
+  find:
+    paths: /home
+    file_type: file
+    depth: 1
+    hidden: true
+    patterns: ".rhosts"
+  register: u27_home_rhosts
+  when: u27_home.stat.exists
+
+- name: "[U-27] 홈 .rhosts 삭제"
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ u27_home_rhosts.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: (u27_home_rhosts.files | default([])) | length > 0

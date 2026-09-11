@@ -1,0 +1,17 @@
+# =============================================================================
+# U-44 tftp / talk(우편 대화 서비스) 비활성화
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-44"
+      units: [tftp, talk, ntalk, talkd, ntalkd]
+
+- name: "[U-44] tftp/talk 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ (vu_legacysvc_pkgmap.tftp | default([])) + (vu_legacysvc_pkgmap.talk | default([])) }}"
+  when: vu_legacy_service_cleanup | bool
+  failed_when: false

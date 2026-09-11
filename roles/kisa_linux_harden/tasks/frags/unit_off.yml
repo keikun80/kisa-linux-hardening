@@ -1,0 +1,81 @@
+# =============================================================================
+# 공용 프래그먼트: systemd 유닛 중지 + mask (기동 차단)
+#
+# 패키지를 함께 제거하려면 호출쪽으로 vu_legacy_service_cleanup 게이트를 거친
+# package 태스크를 별도로 덧붙인다 (예: U-36 r 계열 서비스).
+#
+# 호출 예:
+#   import_tasks: frags/unit_off.yml
+#   vars:
+#     fu:
+#       label: "U-39"
+#       units: [nfs-server, nfs, mountd, rpc.mountd]
+#
+# .service 와 .socket 을 각각 자동 인식해서 mask 대상에 올린다.
+# =============================================================================
+
+- name: "[{{ fu.label }}] 등록된 systemd 유닛 일괄 조회"
+  command: >-
+    bash -c 'ls -1
+    /etc/systemd/system/*.service /etc/systemd/system/*.socket
+    /usr/lib/systemd/system/*.service /usr/lib/systemd/system/*.socket
+    /lib/systemd/system/*.service /lib/systemd/system/*.socket 2>/dev/null | xargs -n1 basename'
+  register: fu_units_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[{{ fu.label }}] mask 대상 유닛 계산"
+  set_fact:
+    fu_targets: >-
+      {% set nav = [] %}
+      {% for stem in fu.units %}
+      {% for suf in ['.service', '.socket'] %}
+        {% set nm = stem + suf %}
+        {% if nm in (fu_units_raw.stdout_lines | default([])) %}
+          {% set _ = nav.append(nm) %}
+        {% endif %}
+      {% endfor %}
+      {% endfor %}
+      {{ nav }}
+
+- name: "[{{ fu.label }}] service 유닛: 중지 + 비활성화 + mask"
+  systemd:
+    name: "{{ item | regex_replace('\\.service$', '') }}"
+    state: stopped
+    enabled: false
+    masked: true
+  loop: "{{ fu_targets | select('match', '\\.service$') | list }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[{{ fu.label }}] socket 유닛 현재 mask 상태 조회"
+  command: "systemctl is-enabled {{ item }} 2>&1 || true"
+  register: fu_sock_state
+  loop: "{{ fu_targets | select('match', '\\.socket$') | list }}"
+  changed_when: false
+
+- name: "[{{ fu.label }}] socket 유닛 mask (부팅 기동 차단)"
+  command: "systemctl mask {{ item.item }}"
+  loop: "{{ fu_sock_state.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - item.rc | default(0) == 0
+    - '"masked" not in (item.stdout | default(""))'
+    - not ansible_check_mode
+
+- name: "[{{ fu.label }}] check 모드 메모: socket mask 대기"
+  debug:
+    msg: "[{{ fu.label }}] {{ item.item }} 을 mask 할 예정입니다(실행은 check 모드가 아니어야 함)"
+  loop: "{{ fu_sock_state.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - item.rc | default(0) == 0
+    - '"masked" not in (item.stdout | default(""))'
+    - ansible_check_mode
+
+- name: "[{{ fu.label }}] 대상 유닛 자체가 없는 경우 (미설치 추정 → 양호)"
+  debug:
+    msg: "{{ fu.units | join(', ') }} 유닛이 등록되어 있지 않습니다(미설치 추정)"
+  when: fu_targets | length == 0

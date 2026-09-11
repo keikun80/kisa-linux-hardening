@@ -1,0 +1,25 @@
+# =============================================================================
+# U-35 공유(FTP) 서비스 익명 접근 제한
+# 판단 기준: vsftpd 의 anonymous_enable=NO
+# 자동 조치: 설정이 있으면 NO 고정 + /var/ftp/pub 삭제(고위험 토클)
+# =============================================================================
+
+- name: "[U-35] vsftpd 익명 로그인을 NO 로 고정"
+  lineinfile:
+    path: /etc/vsftpd/vsftpd.conf
+    regexp: "^#?*anonymous_enable"
+    line: "anonymous_enable=NO"
+  when: stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)
+
+- name: "[U-35] /var/ftp/pub 디렉터리 삭제 (토클 ON)"
+  file:
+    path: /var/ftp/pub
+    state: absent
+  when:
+    - vu_del_ftp_pub_dir | bool
+    - stat(path=/var/ftp/pub).stat.exists | default(false)
+
+- name: "[U-35:M] vsftpd 미설치이면 해당 없음"
+  debug:
+    msg: "vsftpd 설정 파일 없음 — 익명 FTP 경로가 없어 양호 추정"
+  when: not stat(path=/etc/vsftpd/vsftpd.conf).stat.exists | default(false)

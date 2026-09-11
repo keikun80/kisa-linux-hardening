@@ -1,0 +1,16 @@
+# 실행 산출물 (audit.sh 결과물, 실행마다 생성)
+reports/
+*.retry
+*.retry_old/
+
+# 파이썬 바이트코드
+__pycache__/
+*.pyc
+
+# 로컬 스냅샷/아카이브
+_snapshot_*.tgz
+_archive_*.tgz
+
+# IDE
+.vscode/
+.idea/

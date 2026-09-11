@@ -1,0 +1,9 @@
+# =============================================================================
+# U-38 DoS 공격 취약 서비스(echo/discard/time) 비활성화
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-38"
+      units: [echo, discard, daytime, time, tcpmux, chargen]

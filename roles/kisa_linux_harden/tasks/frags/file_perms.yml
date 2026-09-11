@@ -1,0 +1,41 @@
+# =============================================================================
+# 공용 프래그먼트: 파일 소유자/권한 정규화
+#
+# 호출 예:
+#   import_tasks: frags/file_perms.yml
+#   vars:
+#     fp:
+#       label: "U-16"            # 태스크 이름 접두 (감사 리포트 집계용)
+#       paths: ["/etc/passwd"]
+#       owner: root
+#       mode: "0644"
+#       required: true           # 필수인데 없으면 fatal (예: /etc/shadow)
+#       group: ""                # 필요 시 그룹 지정
+# =============================================================================
+
+- name: "[{{ fp.label }}] 현재 권한 조사 (stat)"
+  stat:
+    path: "{{ item }}"
+  register: fp_stat
+  loop: "{{ fp.paths }}"
+
+- name: "[{{ fp.label }}] 부재 목록 계산"
+  set_fact:
+    fp_missing: "{{ fp_stat.results | selectattr('stat.exists', 'false') | map(attribute='path') | list }}"
+
+- name: "[{{ fp.label }}] 필수 파일 부재 알람"
+  assert:
+    that: fp_missing | length == 0
+    fail_msg: "필수 보안 파일이 없습니다: {{ fp_missing | join(',') }}"
+  when: fp.required | default(true) | bool and fp_missing | length > 0
+
+- name: "[{{ fp.label }}] 소유자와 권한을 기준값으로 정규화"
+  file:
+    path: "{{ item.item }}"
+    owner: "{{ fp.owner | default('root') }}"
+    group: "{{ fp.group | default(omit) }}"
+    mode: "{{ fp.mode | default('0644') }}"
+  loop: "{{ fp_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists | bool

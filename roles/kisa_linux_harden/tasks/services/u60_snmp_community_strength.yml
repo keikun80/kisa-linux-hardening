@@ -1,0 +1,19 @@
+# =============================================================================
+# U-60 SNMP 커뮤니티 문자열 복잡성 (public/private 사용 금지)
+# =============================================================================
+
+- name: "[U-60:scan] 기본 커뮤니티(public/private) 탐침 검색"
+  when: vu_snmp_community_probe | bool
+  shell: >-
+    grep -Elw "public|private" /etc/snmp/snmpd.conf 2>/dev/null || true
+  register: u60_cm
+  changed_when: false
+  failed_when: false
+
+- name: "[U-60:M] 취약 커뮤니티 리포트"
+  debug:
+    msg: >-
+      {{ 'public/private 공동발견: ' ~ u60_cm.stdout | trim
+         if (u60_cm.stdout | default('') | trim) | length > 0
+         else 'basic 커뮤니티 없음 (양호)' }}
+      ※ 복잡한 문자열(12자 이상, 혼합)로 교체 권장

@@ -1,0 +1,22 @@
+# =============================================================================
+# U-66 정책에 맞는 시스템 로깅 설정 (syslog-daemon 설치 + 실행)
+# =========================================================================
+
+- name: "[U-66] rsyslog 패키지 설치"
+  package:
+    name: rsyslog
+    state: present
+  # syslog_ng 는 distro 의 옵션이지만 이 플레이는 RsysLog 중심으로 수렴
+
+- name: "[U-66] rsyslog 서비스 활성화"
+  systemd:
+    name: rsyslog
+    state: started
+    enabled: true
+
+- name: "[U-66:M] 로그 저장소 정책 진단 (auditd 등 — 사람 확인)"
+  debug:
+    msg: |
+      정책(기관)에서 요구하는 로그 항목/보관이 충족되는지 확인:
+        /etc/rsyslog.conf 또는 /etc/syslog-ng/syslog-ng.conf
+      EC2: 로그 저장 기간은 CloudWatch Logs/FlowLogs 정책으로도 보강 가능.

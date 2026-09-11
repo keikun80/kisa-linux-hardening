@@ -1,0 +1,23 @@
+# =============================================================================
+# U-33 Hidden files (starting with a dot) — search/manage
+# 판단 기준: 정상 dotfile 외에는 의심 대상
+# 자동 조치 없음 — /etc 밑의 dotfile 중 화이트리스트를 지나가는 것만 보고.
+# (전체 디스크 sweep는 비용 문제로 사람이 수동으로 맡는다)
+# =============================================================================
+
+- name: "[U-33:noscope] /etc 밑 숨김 엔티트리 열거"
+  shell: "ls -1A /etc 2>/dev/null | grep '^[.]' | grep -v '^\\.\\.$'"
+  register: u33_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[U-33:M] 화이트리스트 밖 숨김 파일 리포트"
+  debug:
+    msg: >-
+      /etc 의 숨김 파일(블랙리스트):
+      {{ ((u33_raw.stdout_lines | default([]))
+          | reject('in', (vu_known_hidden_under_etc | default([])))
+          | list) | join(', ')
+         | default('- 없음') }}
+      ※ 알려진 항목은 vu_known_hidden_under_etc 에 추가, 의심 항목은 사람 확인
+  when: (u33_raw.stdout_lines | default([]) | length) > 0

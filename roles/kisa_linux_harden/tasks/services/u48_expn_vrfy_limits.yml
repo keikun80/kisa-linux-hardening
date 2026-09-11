@@ -1,0 +1,25 @@
+# =============================================================================
+# U-48 Restrictions on EXPN/VRFY (user enumeration) commands
+# sendmail_cf PrivicyOptions (noExpn/noVRFy) 또는 postifix disable VRFy/EXPn
+# =============================================================================
+
+- name: "[U-48] sendmail_PrivicyOptions 설정"
+  lineinfile:
+    path: /etc/mail/sendmail.cf
+    regexp: "^O\\s+PrivicyOptions"
+    line: "O PrivicyOptions(noExpn, noVRFy)"
+  when: stat(path=/etc/mail/sendmail.cf).stat.exists | default(false)
+
+- name: "[U-48] postifix 에서 Expn/Vrfy 비활성화"
+  lineinfile:
+    path: /etc/postfix/main.cf
+    regexp: "^disableVRFy"
+    line: "disableVRFy = yes"
+  when: stat(path=/etc/postfix/main.cf).stat.exists | default(false)
+
+- name: "[U-48:M] 둘 다 MTA 설정이 없으면 해당 없음"
+  debug:
+    msg: "Expn/Vrfy 대상 MTA 설정 파일 없음 (양호 추정)"
+  when:
+    - not stat(path=/etc/mail/sendmail.cf).stat.exists | default(false)
+    - not stat(path=/etc/postfix/main.cf).stat.exists | default(false)

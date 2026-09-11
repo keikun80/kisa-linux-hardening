@@ -1,0 +1,55 @@
+# =============================================================================
+# U-03 계정 잠금 임계값 설정 (brute-force 방어)
+# 판단 기준: pam_faillock(tally2) deny<=10 (가이드: 5 권장)
+# 자동 조치: vu_pam_strict_stack=true 일 때 PAM 스택에 faillock 주입
+#   ⚠ ssh 로그인 경로에 영향을 주는 변경. 반드시 테스트 후 확대 시행.
+# =============================================================================
+
+# ---------- RHEL 계열: system-auth / password-auth ---------------------------
+- name: "[U-03] faillock 라인 상향 (RHEL 계열 PAM 4행)"
+  lineinfile:
+    path: "{{ item.file }}"
+    regexp: "^{{ item.regexp_prefix }}"
+    line: "{{ item.line }}"
+  loop:
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
+  loop_control:
+    label: "{{ item.file }} :: {{ item.line[:48] }}"
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+    - file_stat(item.file).stat.exists | default(false)
+
+# ---------- Debian 계열: common-auth ------------------------------------------
+- name: "[U-03] common-auth faillock 주입 (Debian 계열)"
+  lineinfile:
+    path: /etc/pam.d/common-auth
+    regexp: "{{ item.re }}"
+    line: "{{ item.line }}"
+    insertbefore: "{{ item.anchor | default(omit) }}"
+    insertafter: "{{ item.after | default(omit) }}"
+  loop:
+    - { re: "\\bpam_faillock\\.so preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", anchor: "^auth.*pam_unix" }
+    - { re: "\\bpam_faillock\\.so authfail", line: "auth required pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", after: "^auth.*pam_unix" }
+    - { re: "^account.*\\bpam_faillock\\.so", line: "account required pam_faillock.so" }
+  loop_control:
+    label: "{{ item.re }}"
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+
+# ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------
+- name: "[U-03:M] 잠금 임계값 진단 (strict OFF)"
+  debug:
+    msg: |
+      자동 적용 꺼져 있음. 수동 확인:
+        grep -E 'pam_(faillock|tally2)' /etc/pam.d/system-auth /etc/pam.d/password-auth /etc/pam.d/common-auth
+      통과 기준 : deny=10 이하 (권장 5), unlock_time 지정
+  when: not (vu_pam_strict_stack | bool)

@@ -1,0 +1,13 @@
+# =============================================================================
+# U-21 (r)syslog.conf root 소유 + 640 이하
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-21"
+      paths: ["/etc/rsyslog.conf", "/etc/syslog.conf", "/etc/syslog-ng/syslog-ng.conf"]
+      owner: root
+      group: root
+      mode: "0640"
+      required: false   # U-66 쪽에서 logger 설치 책임을 진다. 여기선 권한만

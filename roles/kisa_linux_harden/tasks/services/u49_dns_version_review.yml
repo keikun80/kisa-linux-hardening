@@ -1,0 +1,28 @@
+# =============================================================================
+# U-49 DNS(named/Bind) 보안 패치 확인 — 최신 버전 유지
+# 자동 조치 없음(패치 정책은 U-64 자동 패치 체인으로 커버) — 벤더 공지 대조는
+# 사람의 몫
+# =============================================================================
+
+- name: "[U-49:set] 대상 DNS 패키지 목록 확정 (group_vars 프로필)"
+  set_fact:
+    u49_dnspkgs: "{{ vu_dns_server_pkgs | default((ansible_facts.pkg_mgr in ['yum', 'dnf']) | ternary(['bind'], ['bind9']), true) }}"
+
+- name: "[U-49:scan] Bind/Named 버전 취득"
+  shell: >-
+    (named -v 2>/dev/null) ||
+    (rpm -q {{ u49_dnspkgs | join(' ') }} 2>/dev/null) ||
+    (dpkg-query -W -f='${Version}\\n' {{ u49_dnspkgs | join(' ') }} 2>/dev/null) ||
+    echo "no-bind"
+  register: u49_ver
+  changed_when: false
+  failed_when: false
+
+- name: "[U-49:M] BIND 버전 리포트 + 패치 확인 안내"
+  debug:
+    msg: |
+      BIND 버전: {{ u49_ver.stdout | default('?') }}
+      벤더 보안 공지(Announce) 대조는 사람이 수행:
+        - ISC: https://lists.isc.org/pipermail/bind-announce/
+        - RHEL/Fedora: advisories.redhat.com / Fedora Security Notices
+        - Ubuntu: ubuntu.com/security/notices

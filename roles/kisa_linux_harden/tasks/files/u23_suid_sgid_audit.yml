@@ -1,0 +1,33 @@
+# =============================================================================
+# U-23 SUID/SGID bit 파일 감사 (root 소유 바이너리에 집중)
+# 판단 기준: 신뢰 목록(vu_trusted_suid_bins, basename) 밖의 SUID/SGID
+#            이 없어야 양호
+# 자동 조치 없음 — 목록만 보고, 스트립은 사람이 승인한 뒤에
+# =============================================================================
+
+- name: "[U-23:scan] SUID/SGID 파일 수집"
+  shell: >-
+    find {{ vu_scan_roots | join(' ') }} -xdev -type f
+    \( -perm -4000 -o -perm -2000 \) -user root -printf '%h/%f\n' 2>/dev/null
+  register: u23_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[U-23] 화이트리스트 밖 대상 추출"
+  set_fact:
+    u23_suspicious: >-
+      {% set nav = [] %}
+      {% for p in u23_raw.stdout_lines | default([]) %}
+        {% set bn = p.split('/')[-1] %}
+        {% if bn not in (vu_trusted_suid_bins | default([])) %}
+          {% set _ = nav.append(p ~ '   (basename: ' ~ bn ~ ')') %}
+        {% endif %}
+      {% endfor %}
+      {{ nav }}
+
+- name: "[U-23:M] 화이트리스트 이탈 리포트 (삭제 여부는 사람 결정)"
+  debug:
+    msg: >-
+      화이트리스트에 없는 SUID/SGID:
+      {{ (u23_suspicious) | join('\n    ') | default('- 없음 (양호)') }}
+      ※ 필요 없는 파일은 `chmod u-s,g-s <경로>` 로 bit 제거 후 재점검

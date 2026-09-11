@@ -1,0 +1,13 @@
+# =============================================================================
+# U-14 시스템 환경변수 파일 (글로벌 shell rc) 소유자/권한
+# Criterion: files such as /etc/profile, /etc/bashrc are root-owned + not writable by others
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-14"
+      paths: ["/etc/profile", "/etc/bashrc", "/etc/bash.bashrc"]
+      owner: root
+      mode: "0644"
+      required: false

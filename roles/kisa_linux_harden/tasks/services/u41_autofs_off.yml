@@ -1,0 +1,17 @@
+# =============================================================================
+# U-41 automountd (autofs) 제거
+# =============================================================================
+
+- import_tasks: "../frags/unit_off.yml"
+  vars:
+    fu:
+      label: "U-41"
+      units: [autofs]
+
+- name: "[U-41] autofs 패키지 제거 (토클 ON)"
+  package:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ vu_autofs_pkgs | default([]) }}"
+  when: vu_legacy_service_cleanup | bool
+  failed_when: false

@@ -1,0 +1,18 @@
+# =============================================================================
+# U-08 관리자 그룹(루트)에 최소한의 계정이 들어가도록 관리
+# 판단 기준: root/administrative group 멤버가 실제 운용 인원이어야 함
+# 자동 조치 없음(멤버십 제거는 영업중단 리스크가 큼) — 인원 비교 자료 제공
+# =============================================================================
+
+- name: "[U-08:M] root 루트 구성원과 관리권 상승 수단 인벤토리"
+  debug:
+    msg: |
+      root 루트 구성원:
+        {{ (lookup('file', '/etc/group').splitlines() | select('match', '^root:') | list)
+           | map('split', ':') | map('nth', 3) | select('length') | list }}
+      sudoers 계열:
+        {{ (lookup('file', '/etc/sudoers').splitlines() | default([])
+           | select('match', '(sudo|NOPASSWD)')
+           | map('trim') | list) | join('; ') | default('-') }}
+      ※ 위의 계정들이 모두 현역 담당자인지 사람이 확인한 뒤 불필요 멤버를
+        deluser/userdel 또는 visudo에서 빼줘

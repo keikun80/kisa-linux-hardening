@@ -1,0 +1,18 @@
+# =============================================================================
+# U-61 SNMP 접근 통제 (com2sec / v3 ACL 에 의한 원본 IP 제한)
+# =============================================================================
+
+- name: "[U-61:scan] com2sec(원본 제한) 선언 탐색"
+  shell: >-
+    grep -Ec "^com2sec" /etc/snmp/snmpd.conf 2>/dev/null || true
+  register: u61_cnt
+  changed_when: false
+  failed_when: false
+
+- name: "[U-61:M] 접근 통제 상태 리포트"
+  debug:
+    msg: >-
+      {{ 'com2sec 룰 수: ' ~ u61_cnt.stdout
+         if (u61_cnt.stdout | default('0')) != '0'
+         else 'com2sec 없음 — SNMP 가 돌아가지 않을 땐 양호. 실행 중이라면
+          원본 IP 제한(com2sec/community ACL) 또는 v3 user를 도입' }}

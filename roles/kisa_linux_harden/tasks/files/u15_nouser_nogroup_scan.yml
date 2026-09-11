@@ -1,0 +1,21 @@
+# =============================================================================
+# U-15 소유자 없는(nouser/nogroup) 파일/디렉터리 관리
+# 판단 기준: find -nouser -nogroup 결과가 비어있어야 양호
+# 자동 조치 없음(대량 치환 리스크) — vu_scan_roots 에서만 스캔
+#   (find / 전체는 IO 부하가 크기 때문)
+# =============================================================================
+
+- name: "[U-15:scan] nouser/nogroup 파일 찾기"
+  shell: >-
+    find {{ vu_scan_roots | join(' ') }} \( -nouser -o -nogroup \) 2>/dev/null | head -50
+  register: u15_cmd
+  changed_when: false
+  failed_when: false
+
+- name: "[U-15:M] 스캔 결과 리포트"
+  debug:
+    msg: >-
+      소유자 없는 파일:
+      {{ u15_cmd.stdout_lines | default([]) | join('\n    ') | default('- 없음 (양호)') }}
+      → 처리 방침: 새 서비스 계정을 만들어 소유권을 이관(useradd + chown),
+        더 이상 쓸 것이 없다면 삭제 후 사람 승인

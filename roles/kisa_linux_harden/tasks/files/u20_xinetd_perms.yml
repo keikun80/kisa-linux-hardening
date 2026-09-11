@@ -1,0 +1,14 @@
+# =============================================================================
+# U-20 (x)inetd.conf root 소유 + 600
+# 현대 배포판엔 미존재가 흔함 → 있으면 정규화, 없으면 해당없음
+# =============================================================================
+
+- import_tasks: "../frags/file_perms.yml"
+  vars:
+    fp:
+      label: "U-20"
+      paths: ["/etc/xinetd.conf", "/etc/inetd.conf"]
+      owner: root
+      group: root
+      mode: "0600"
+      required: false
