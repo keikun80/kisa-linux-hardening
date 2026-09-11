@@ -10,12 +10,21 @@
   when: ansible_effective_user is not defined
   tags: [always]
 
+# 실효 사용자는 "팩트 수집 시점"이 아닌 "태스크 실행 시점"을 믿는다 —
+# become 적용 여부는 이 순간의 셸만 정확히 알고 있기 때문(캐시/트리밍/승급 시점 차이 무관).
+- name: "[PREP] 실행 시점 실효 사용자 실측 (become 반영)"
+  command: id -un
+  register: vu_prep_uid
+  changed_when: false
+  tags: [always]
+
 - name: "[PREP] 루트 권한 사전조건 확인"
   assert:
-    that: ansible_effective_user is defined and ansible_effective_user == 'root'
+    that: (vu_prep_uid.stdout | default('') | trim) == 'root'
     fail_msg: >-
-      이 플레이북은 root 권한으로 실행되어야 합니다.
-      실행 시 --become (또는 become_user) 옵션을 지정하십시오.
+      실효 사용자가 '{{ vu_prep_uid.stdout | default("<측정 불가>") | trim }}' 인데 root 가 필요합니다.
+      실행 컨텍스트(플레이/호스트 인벤토리/환경)에 become: true 가 실제로 전달되는지 확인하시고,
+      필요시 --become 또는 --ask-become-pass 로 재실행하십시오.
   tags: [always]
 
 - name: "[PREP] 계정 DB 원본 수집 (/etc/passwd·/etc/shadow·/etc/group — 원격에서)"
