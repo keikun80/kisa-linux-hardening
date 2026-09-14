@@ -5,6 +5,11 @@
 # 전체 업그레이드는 수행하지 않음 (서비스 열화 방지). vu_autopatch_security=false 로 비활성화.
 # =============================================================================
 
+- name: "[U-64] 디버깅: vu_autopatch 및 ansible_pkg_mgr 확인"
+  debug:
+    msg: "vu_autopatch={{ vu_autopatch }} | ansible_pkg_mgr={{ ansible_pkg_mgr | default('NOT_SET') }}"
+  changed_when: false
+
 # ---------------- RHEL 계열 (AL2023/Fedora) ----------------------------------
 - name: "[U-64] dnf 자동패치 패키지 설치"
   package:
