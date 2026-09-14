@@ -118,6 +118,10 @@ vu_snmp_community_probe: true
 
 # --- 4~5장 패치/생애주기 -------------------------------------------------------
 # U-64: 정기적 보안 자동 패치 (dnf-automatic / unattended-upgrades)
+# group_vars/<그룹>/main.yml 에서 오버라이드됨
+vu_autopatch:
+  pkg: unattended-upgrades
+  timer_unit: apt-daily-upgrade.timer
 vu_autopatch_security: true
 # U-62: 로그인 경보 메시지 (기관의 정식 문구를 채워넣어 사용할 것)
 vu_motd_text: |
