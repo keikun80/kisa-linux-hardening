@@ -8,18 +8,18 @@
     path: /etc/mail/sendmail.cf
     regexp: "^O\\s+PrivicyOptions"
     line: "O PrivicyOptions(noExpn, noVRFy)"
-  when: "'/etc/mail/sendmail.cf' | file"
+  when: lookup('fileglob', '/etc/mail/sendmail.cf', errors='ignore') | length > 0
 
 - name: "[U-48] postifix 에서 Expn/Vrfy 비활성화"
   lineinfile:
     path: /etc/postfix/main.cf
     regexp: "^disableVRFy"
     line: "disableVRFy = yes"
-  when: "'/etc/postfix/main.cf' | file"
+  when: lookup('fileglob', '/etc/postfix/main.cf', errors='ignore') | length > 0
 
 - name: "[U-48:M] 둘 다 MTA 설정이 없으면 해당 없음"
   debug:
     msg: "Expn/Vrfy 대상 MTA 설정 파일 없음 (양호 추정)"
   when:
-    - not "'/etc/mail/sendmail.cf' | file"
-    - not "'/etc/postfix/main.cf' | file"
+    - lookup('fileglob', '/etc/mail/sendmail.cf', errors='ignore') | length == 0
+    - lookup('fileglob', '/etc/postfix/main.cf', errors='ignore') | length == 0

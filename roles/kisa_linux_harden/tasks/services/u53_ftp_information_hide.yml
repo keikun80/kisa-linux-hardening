@@ -8,9 +8,9 @@
     path: /etc/vsftpd/vsftpd.conf
     regexp: "^#?ftp_banner"
     line: "ftp_banner=Ready."
-  when: "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
 
 - name: "[U-53:M] FTP 서버 설정이 없으면 해당 없음"
   debug:
     msg: "VsFtpD 미설치(혹은 설정 파일 없음) — 배너 문제 해당 없음"
-  when: not "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0

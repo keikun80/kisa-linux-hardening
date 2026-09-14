@@ -12,10 +12,10 @@
     group: root
     mode: "0644"
     regexp: "^root$"
-  when: "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
   # vsftpd 가 있는 시스템에서만 ftpusers 가 의미가 있으므로 그 전제하에 처리
 
 - name: "[U-57:M] FTP 스택 없음 리포트"
   debug:
     msg: "vsftpd/ftpusers 스택 없음 — 해당 없음 (양호)"
-  when: not "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0

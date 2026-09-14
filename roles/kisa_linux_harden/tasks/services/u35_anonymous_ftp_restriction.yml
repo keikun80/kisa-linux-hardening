@@ -9,7 +9,7 @@
     path: /etc/vsftpd/vsftpd.conf
     regexp: "^#?*anonymous_enable"
     line: "anonymous_enable=NO"
-  when: "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
 
 - name: "[U-35] /var/ftp/pub 디렉터리 삭제 (토클 ON)"
   file:
@@ -17,9 +17,9 @@
     state: absent
   when:
     - vu_del_ftp_pub_dir | bool
-    - "'/var/ftp/pub' | file"
+    - lookup('fileglob', '/var/ftp/pub', errors='ignore') | length > 0
 
 - name: "[U-35:M] vsftpd 미설치이면 해당 없음"
   debug:
     msg: "vsftpd 설정 파일 없음 — 익명 FTP 경로가 없어 양호 추정"
-  when: not "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0

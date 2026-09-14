@@ -14,7 +14,7 @@
   when:
     - vu_pam_strict_stack | bool
     - vu_su_wheel_group is defined
-    - "'/etc/pam.d/su' | file"
+    - lookup('fileglob', '/etc/pam.d/su', errors='ignore') | length > 0
 
 - name: "[U-06] su 바이너리를 관리그룹 SUID 전용(4750) 고정 (RHEL 계열)"
   file:
@@ -28,7 +28,7 @@
   when:
     - vu_pam_strict_stack | bool
     - ansible_facts.pkg_mgr in ['yum', 'dnf']
-    - item | file
+    - lookup('fileglob', item, errors='ignore') | length > 0
 
 - name: "[U-06:M] Diagnosing su restriction state(strict OFF or wheel absent)"
   debug:

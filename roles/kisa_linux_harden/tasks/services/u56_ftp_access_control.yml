@@ -20,16 +20,16 @@
   loop:
     - /etc/vsftpd/ftpusers
     - /etc/ftpusers
-  when: "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
 
 - name: "[U-56] VsFtpD 설정에서 Ftpusers 경로 유지 (option 검증용)"
   lineinfile:
     path: /etc/vsftpd/vsftpd.conf
     regexp: "^#?ftpusers"
     line: "ftpusers=/etc/vsftpd/ftpusers"
-  when: "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
 
 - name: "[U-56:M] VsFtpD 미설치 리포트"
   debug:
     msg: "VsFtpD 미설치 — FTP 접근 제어는 해당 없음"
-  when: not "'/etc/vsftpd/vsftpd.conf' | file"
+  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0
