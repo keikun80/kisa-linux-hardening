@@ -27,4 +27,4 @@
   register: u01_pts
   changed_when: false
   failed_when: false
-  when: stat(path=/etc/securetty).stat.exists | default(false)
+  when: "'/etc/securetty' | file"
