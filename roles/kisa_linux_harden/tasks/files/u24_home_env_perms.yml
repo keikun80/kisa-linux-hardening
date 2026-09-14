@@ -5,7 +5,7 @@
 
 - name: "[U-24] 대상 파일 조합 만들기 (home x rc-file)"
   set_fact:
-    u24_pairs: >-
+    u24_pairs: |
       {% set nav = [] %}
       {% for u in vu_users %}
         {% if (u.home | string) is match('^/home/.*') %}

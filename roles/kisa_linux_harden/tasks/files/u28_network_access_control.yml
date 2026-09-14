@@ -30,7 +30,7 @@
 
 - name: "[U-28] 방화벽 개방 쌍(출처 x 포트) 계산"
   set_fact:
-    u28_pairs: >-
+    u28_pairs: |
       {% set nav = [] %}
       {% for s in vu_firewall_allow_sources | default([]) %}
         {% for p in vu_firewall_tcp_ports | default([22]) %}

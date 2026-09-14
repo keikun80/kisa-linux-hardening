@@ -13,7 +13,7 @@
 
 - name: "[U-50] 위험 선언(any/anywhere) 추출"
   set_fact:
-    u50_risky: >-
+    u50_risky: |
       {{ u50_tf.stdout_lines | default([])
          | select('search', '=\\s*(any|anywhere)\\s*;') | list }}
 

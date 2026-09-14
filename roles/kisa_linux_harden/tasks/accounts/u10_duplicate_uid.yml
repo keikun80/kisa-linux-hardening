@@ -8,7 +8,7 @@
 
 - name: "[U-10] UID 가 겹키는 계정 집합 산출"
   set_fact:
-    u10_dup_uids: >-
+    u10_dup_uids: |
       {% set acc = {} %}
       {% for u in vu_users %}
         {% if u.uid | int > 0 %}

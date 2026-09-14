@@ -40,23 +40,19 @@
 
 - name: "[PREP] 사용자 데이터베이스 로드 (/etc/passwd 파싱)"
   set_fact:
-    vu_users: >-
+    vu_users: |
       {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/passwd') | list | first).content | default('') | b64decode %}
       {% set nav = [] %}
       {% for l in src.splitlines() | select('match', '^.+') %}
-        {% set _ = nav.append({
-          'name': l.split(':')[0],
-          'uid': l.split(':')[2] | int | default(l.split(':')[2]),
-          'home': l.split(':')[5],
-          'shell': l.split(':')[6]
-        }) %}
+        {% set fs = l.split(':') %}
+        {% set _ = nav.append({'name': fs[0], 'uid': fs[2] | int, 'home': fs[5], 'shell': fs[6]}) %}
       {% endfor %}
       {{ nav }}
   tags: [always]
 
 - name: "[PREP] 약한 해시(MD5) 사용 중인 계정 프로빙 (U-13 참조)"
   set_fact:
-    vu_md5_users: >-
+    vu_md5_users: |
       {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/shadow') | list | first).content | default('') | b64decode %}
       {% set nav = [] %}
       {% for l in src.splitlines() | select('match', '^.:') %}
@@ -105,8 +101,8 @@
 
 - name: "[PREP] 활성 고위험 토글 집계"
   set_fact:
-    vu_enabled_high_risk: >-
-      [ {% for kv in [
+    vu_enabled_high_risk: |
+      {% set kv_list = [
           ('vu_pam_strict_stack', 'PAM 스택 직접 조작(U-02/U-03)'),
           ('vu_manage_host_firewall', '호스트 방화벽 활성화(U-28)'),
           ('vu_legacy_service_cleanup', '레거시 패키지 제거(U-36등)'),
@@ -116,8 +112,13 @@
           ('vu_strip_world_writable', 'ww-bit 자동 제거(U-25)'),
           ('vu_del_ftp_pub_dir', '/var/ftp/pub 삭제(U-35)'),
           ('vu_nfs_manage_exports', '/etc/exports 재생성(U-40)')] %}
-      {% if vars[kv[0]] | default(false) | bool %}'{{ kv[1] }}',{% endif %}
-      {%- endfor %} ] | select('match', '.') | list
+      {% set nav = [] %}
+      {% for kv in kv_list %}
+        {% if vars[kv[0]] | default(false) | bool %}
+          {% set _ = nav.append(kv[1]) %}
+        {% endif %}
+      {% endfor %}
+      {{ nav }}
   tags: [always]
 
 - name: "[PREP] 고위험 토글 알림"

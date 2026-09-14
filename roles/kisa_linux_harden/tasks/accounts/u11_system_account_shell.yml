@@ -7,7 +7,7 @@
 
 - name: "[U-11] nologin 인지 확인이 필요한 시스템 계정 추출"
   set_fact:
-    u11_badshells: >-
+    u11_badshells: |
       {{ vu_users
          | selectattr('name', 'in', vu_system_accounts)
          | rejectattr('shell', 'in', ['', '/bin/false', '/usr/sbin/nologin', '/sbin/nologin'])

@@ -26,7 +26,7 @@
 
 - name: "[{{ fu.label }}] mask 대상 유닛 계산"
   set_fact:
-    fu_targets: >-
+    fu_targets: |
       {% set nav = [] %}
       {% for stem in fu.units %}
       {% for suf in ['.service', '.socket'] %}

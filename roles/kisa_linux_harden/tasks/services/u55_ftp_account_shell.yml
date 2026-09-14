@@ -4,7 +4,7 @@
 
 - name: "[U-55] 셸이 열린 FTP 계정을 추출 (ftp/anon 계열 이름만 취급)"
   set_fact:
-    u55_targets: >-
+    u55_targets: |
       {{ vu_users
          | selectattr('name', 'search', '^(ftp|anon)')
          | rejectattr('shell', 'in', ['', '/bin/false', '/usr/sbin/nologin', '/sbin/nologin'])
@@ -21,7 +21,7 @@
 
 - name: "[U-55:M] FTP 계정 셸 상태 리포트"
   set_fact:
-    u55_report: >-
+    u55_report: |
       {% set nav = [] %}
       {% for u in vu_users %}
         {% if u.name is match('^(ftp|anon)') %}

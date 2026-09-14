@@ -15,7 +15,7 @@
 
 - name: "[U-23] 화이트리스트 밖 대상 추출"
   set_fact:
-    u23_suspicious: >-
+    u23_suspicious: |
       {% set nav = [] %}
       {% for p in u23_raw.stdout_lines | default([]) %}
         {% set bn = p | basename %}

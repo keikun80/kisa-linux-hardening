@@ -11,7 +11,7 @@
 
 - name: "[U-09] 그룹 멤버 중 존재하지 않는 아이디 추출"
   set_fact:
-    u09_ghosts: >-
+    u09_ghosts: |
       {% set nav = [] %}
       {% for l in lookup('file', '/etc/group').splitlines() %}
         {% if ':' in l %}

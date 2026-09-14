@@ -6,7 +6,7 @@
 
 - name: "[U-32] 부재 가정(home) 목록 산출"
   set_fact:
-    u32_missing: >-
+    u32_missing: |
       {% set nav = [] %}
       {% for u in vu_users %}
         {% if u.home is not match('^/') or u.home in ('/', '~') %}{% continue %}{% endif %}

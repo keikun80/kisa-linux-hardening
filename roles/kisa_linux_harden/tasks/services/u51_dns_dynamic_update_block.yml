@@ -12,7 +12,7 @@
 
 - name: "[U-51] 위험 선언(any) 추출"
   set_fact:
-    u51_risky: >-
+    u51_risky: |
       {{ u51_raw.stdout_lines | default([])
          | select('search', '=\\s*any\\s*;|\\bany\\b') | list }}
 
