@@ -18,7 +18,7 @@
     u23_suspicious: >-
       {% set nav = [] %}
       {% for p in u23_raw.stdout_lines | default([]) %}
-        {% set bn = p.split('/')[-1] %}
+        {% set bn = p | basename %}
         {% if bn not in (vu_trusted_suid_bins | default([])) %}
           {% set _ = nav.append(p ~ '   (basename: ' ~ bn ~ ')') %}
         {% endif %}
