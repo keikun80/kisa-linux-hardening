@@ -9,7 +9,7 @@
     msg: >-
       셸이 실행형(/bin/sh 계열)인 계정 — 퇴사자/불필요 계정이 섞였는지 사람이 확인:
       {{ vu_users | selectattr('shell', 'search', '(sh|bash|zsh|ksh|csh)$') | map(attribute='name') | list }}
-    _(검토 후 user: name=x state=absent 또는 shell nologin 으로 폐기)_
+      [참고: 검토 후 user: name=x state=absent 또는 shell nologin 으로 폐기]
 
 - name: "[U-07:M] 수동 점검 명령어 안내"
   debug:
