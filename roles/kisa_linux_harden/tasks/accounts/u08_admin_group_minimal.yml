@@ -5,7 +5,7 @@
 # =============================================================================
 
 - name: "[U-08] root 그룹 멤버 추출"
-  shell: grep "^root:" /etc/group | cut -d: -f4 | tr "," "\n" | grep . || true
+  shell: "grep '^root:' /etc/group | cut -d: -f4 | tr ',' '\n' | grep . || true"
   register: u08_root_members
   changed_when: false
   failed_when: false
