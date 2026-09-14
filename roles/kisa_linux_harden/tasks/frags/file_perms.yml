@@ -21,7 +21,7 @@
 
 - name: "[{{ fp.label }}] 부재 목록 계산"
   set_fact:
-    fp_missing: "{{ fp_stat.results | selectattr('stat.exists', 'false') | map(attribute='path') | list }}"
+    fp_missing: "{{ fp_stat.results | selectattr('stat.exists', 'false') | map(attribute='item') | list }}"
 
 - name: "[{{ fp.label }}] 필수 파일 부재 알람"
   assert:
