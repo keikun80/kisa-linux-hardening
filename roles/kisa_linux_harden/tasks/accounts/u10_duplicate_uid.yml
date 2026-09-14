@@ -43,8 +43,8 @@
 - name: "[U-10:M] 중복 UID 리포트 / 처분 안내"
   debug:
     msg: >-
-      {{ '겹치는 UID: ' ~ (u10_dup_raw.stdout | from_json | default([])) | tojson
-         if (u10_dup_raw.stdout | from_json | default([])) | length > 0 else 'UID 중복 없음 (양호)' }}
+      {{ '겹치는 UID: ' ~ ((u10_dup_raw.stdout if u10_dup_raw.stdout | length > 0 else '[]') | from_json) | tojson
+         if (u10_dup_raw.stdout if u10_dup_raw.stdout | length > 0 else '[]') | from_json | length > 0 else 'UID 중복 없음 (양호)' }}
       {{ '재할당은 -e vu_apply_dup_uid=true -e vu_dup_uid_newvals={"계정명": 새UID} 로 수행 후,
           chown -R --from=옛UID 새UID /대상경로 까지 병행 바람'
-         if (u10_dup_raw.stdout | from_json | default([])) | length > 0 else '' }}
+         if (u10_dup_raw.stdout if u10_dup_raw.stdout | length > 0 else '[]') | from_json | length > 0 else '' }}

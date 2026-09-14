@@ -11,8 +11,7 @@
     rc_files = ['.bashrc', '.profile', '.bash_profile']
     with open('/etc/passwd') as f:
         for line in f:
-            line = line.strip()
-            if not line:
+            if line.strip():
                 continue
             parts = line.split(':')
             if len(parts) >= 7:
@@ -30,7 +29,7 @@
   stat:
     path: "{{ item.path }}"
   register: u24_stat
-  loop: "{{ u24_pairs_raw.stdout | from_json | default([]) }}"
+  loop: "{{ (u24_pairs_raw.stdout if u24_pairs_raw.stdout | length > 0 else '[]') | from_json }}"
   loop_control:
     label: "{{ item.path }}"
 

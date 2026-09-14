@@ -36,7 +36,7 @@
 - name: "[U-09:M] Ghost member report(remove determined by person)"
   debug:
     msg: >-
-      {{ '존재하지 않는 멤버 발견: ' ~ ((u09_ghosts_raw.stdout | from_json | default([])) | join(' ; '))
-         if (u09_ghosts_raw.stdout | from_json | default([])) | length > 0
+      {{ '존재하지 않는 멤버 발견: ' ~ ((u09_ghosts_raw.stdout if u09_ghosts_raw.stdout | length > 0 else '[]') | from_json) | join(' ; ')
+         if (u09_ghosts_raw.stdout if u09_ghosts_raw.stdout | length > 0 else '[]') | from_json | length > 0
          else 'ghost 멤버 없음 (양호)' }}
       처분 예: gpasswd -d <member> <group>

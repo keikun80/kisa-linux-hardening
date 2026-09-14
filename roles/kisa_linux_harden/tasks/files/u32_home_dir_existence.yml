@@ -29,7 +29,7 @@
   stat:
     path: "{{ item.path }}"
   register: u32_stat
-  loop: "{{ u32_missing_raw.stdout | from_json | default([]) }}"
+  loop: "{{ (u32_missing_raw.stdout if u32_missing_raw.stdout | length > 0 else '[]') | from_json }}"
   loop_control:
     label: "{{ item.user }}:{{ item.path }}"
 

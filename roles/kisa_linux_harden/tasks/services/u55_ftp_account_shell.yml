@@ -28,10 +28,10 @@
   user:
     name: "{{ item }}"
     shell: /sbin/nologin
-  loop: "{{ u55_targets_raw.stdout | from_json | default([]) }}"
+  loop: "{{ (u55_targets_raw.stdout if u55_targets_raw.stdout | length > 0 else '[]') | from_json }}"
   loop_control:
     label: "{{ item }}"
-  when: (u55_targets_raw.stdout | from_json | default([])) | length > 0
+  when: ((u55_targets_raw.stdout if u55_targets_raw.stdout | length > 0 else '[]') | from_json) | length > 0
 
 - name: "[U-55:M] FTP 계정 셸 상태 리포트"
   debug:

@@ -49,14 +49,14 @@
     state: stopped
     enabled: false
     masked: true
-  loop: "{{ fu_targets_raw.stdout | from_json | default([]) | select('match', '\\.service$') | list }}"
+  loop: "{{ (fu_targets_raw.stdout if fu_targets_raw.stdout | length > 0 else '[]') | from_json | select('match', '\\.service$') | list }}"
   loop_control:
     label: "{{ item }}"
 
 - name: "[{{ fu.label }}] socket 유닛 현재 mask 상태 조회"
   command: "systemctl is-enabled {{ item }} 2>&1 || true"
   register: fu_sock_state
-  loop: "{{ fu_targets_raw.stdout | from_json | default([]) | select('match', '\\.socket$') | list }}"
+  loop: "{{ (fu_targets_raw.stdout if fu_targets_raw.stdout | length > 0 else '[]') | from_json | select('match', '\\.socket$') | list }}"
   changed_when: false
 
 - name: "[{{ fu.label }}] socket 유닛 mask (부팅 기동 차단)"
@@ -83,4 +83,4 @@
 - name: "[{{ fu.label }}] 대상 유닛 자체가 없는 경우 (미설치 추정 → 양호)"
   debug:
     msg: "{{ fu.units | join(', ') }} 유닛이 등록되어 있지 않습니다(미설치 추정)"
-  when: (fu_targets_raw.stdout | from_json | default([])) | length == 0
+  when: ((fu_targets_raw.stdout if fu_targets_raw.stdout | length > 0 else '[]') | from_json) | length == 0

@@ -31,7 +31,7 @@
   debug:
     msg: >-
       {{ '위험 선언 발췌 (사람 수정 필요, "none;" 또는 슬레이브 IP로 제한): '
-         ~ ((u50_risky_raw.stdout | from_json | default([])) | join(' ; '))
-         if (u50_risky_raw.stdout | from_json | default([])) | length > 0
+         ~ ((u50_risky_raw.stdout if u50_risky_raw.stdout | length > 0 else '[]') | from_json) | join(' ; ')
+         if (u50_risky_raw.stdout if u50_risky_raw.stdout | length > 0 else '[]') | from_json | length > 0
          else '위험한 allow-transfers 없음 — named 구동 시 기본값(None)이 아니라
               named.conf의 지역(zone) 단위가 사람 확인 대상. (named 미설치 = 양호)' }}

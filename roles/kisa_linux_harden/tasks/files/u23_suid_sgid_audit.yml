@@ -18,12 +18,12 @@
     python3 -c "
     import json, os
     trusted = {{ vu_trusted_suid_bins | default([]) | to_json }}
-    suspicious = []
     raw = '''{{ u23_raw.stdout_lines | default([]) | to_json }}'''.strip()
     if raw:
         paths = json.loads(raw)
     else:
         paths = []
+    suspicious = []
     for p in paths:
         bn = os.path.basename(p)
         if bn not in trusted:
@@ -38,5 +38,5 @@
   debug:
     msg: >-
       화이트리스트에 없는 SUID/SGID:
-      {{ (u23_suspicious_raw.stdout | from_json | default([])) | join('\n    ') | default('- 없음 (양호)') }}
+      {{ ((u23_suspicious_raw.stdout if u23_suspicious_raw.stdout | length > 0 else '[]') | from_json) | join('\n    ') | default('- 없음 (양호)') }}
       ※ 필요 없는 파일은 `chmod u-s,g-s <경로>` 로 bit 제거 후 재점검

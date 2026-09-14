@@ -59,7 +59,7 @@
     permanent: true
     immediate: true
     rich_rule: "rule family ipv4 source address={{ item.src }} port port={{ item.port }} protocol=tcp accept"
-  loop: "{{ u28_pairs_raw.stdout | from_json | default([]) }}"
+  loop: "{{ (u28_pairs_raw.stdout if u28_pairs_raw.stdout | length > 0 else '[]') | from_json }}"
   when:
     - vu_manage_host_firewall | bool
     - ansible_facts.pkg_mgr in ['yum', 'dnf']
@@ -79,7 +79,7 @@
     src: "{{ item.src }}"
     proto: tcp
     port: "{{ item.port }}"
-  loop: "{{ u28_pairs_raw.stdout | from_json | default([]) }}"
+  loop: "{{ (u28_pairs_raw.stdout if u28_pairs_raw.stdout | length > 0 else '[]') | from_json }}"
   when:
     - vu_manage_host_firewall | bool
     - ansible_facts.pkg_mgr not in ['yum', 'dnf']

@@ -30,6 +30,6 @@
   debug:
     msg: >-
       {{ '위험 선언 발견 — "none;" 이나 제한된 뷰로 사람 수정: '
-         ~ ((u51_risky_raw.stdout | from_json | default([])) | join(' ; '))
-         if (u51_risky_raw.stdout | from_json | default([])) | length > 0
+         ~ ((u51_risky_raw.stdout if u51_risky_raw.stdout | length > 0 else '[]') | from_json) | join(' ; ')
+         if (u51_risky_raw.stdout if u51_risky_raw.stdout | length > 0 else '[]') | from_json | length > 0
          else '위험한 allow-update(any) 없음 (양호 / named 미구동도 포함)' }}
