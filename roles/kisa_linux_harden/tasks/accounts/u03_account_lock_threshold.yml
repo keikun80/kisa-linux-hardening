@@ -24,7 +24,7 @@
     label: "{{ item.file }} :: {{ item.line[:48] }}"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf']
     - file_stat(item.file).stat.exists | default(false)
 
 # ---------- Debian 계열: common-auth ------------------------------------------
@@ -43,7 +43,7 @@
     label: "{{ item.re }}"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf']
 
 # ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------
 - name: "[U-03:M] 잠금 임계값 진단 (strict OFF)"

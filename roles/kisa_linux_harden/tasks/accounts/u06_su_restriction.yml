@@ -27,7 +27,7 @@
     - /bin/su
   when:
     - vu_pam_strict_stack | bool
-    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf']
     - lookup('fileglob', item, errors='ignore') | length > 0
 
 - name: "[U-06:M] Diagnosing su restriction state(strict OFF or wheel absent)"

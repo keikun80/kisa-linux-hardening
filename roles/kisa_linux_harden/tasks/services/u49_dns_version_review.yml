@@ -6,7 +6,7 @@
 
 - name: "[U-49:set] 대상 DNS 패키지 목록 확정 (group_vars 프로필)"
   set_fact:
-    u49_dnspkgs: "{{ vu_dns_server_pkgs | default((ansible_facts.pkg_mgr in ['yum', 'dnf']) | ternary(['bind'], ['bind9']), true) }}"
+    u49_dnspkgs: "{{ vu_dns_server_pkgs | default((ansible_pkg_mgr in ['yum', 'dnf']) | ternary(['bind'], ['bind9']), true) }}"
 
 - name: "[U-49:scan] Bind/Named 버전 취득"
   shell: >-

@@ -52,7 +52,7 @@
     enabled: true
   when:
     - vu_manage_host_firewall | bool
-    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf']
 
 - name: "[U-28] firewalld 출처별 허용 규칙 (목표 포트만)"
   firewalld:
@@ -62,7 +62,7 @@
   loop: "{{ (u28_pairs_raw.stdout if u28_pairs_raw.stdout | length > 0 else '[]') | from_json }}"
   when:
     - vu_manage_host_firewall | bool
-    - ansible_facts.pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf']
 
 - name: "[U-28] ufw 활성화 (기본 수신 거부)"
   ufw:
@@ -70,7 +70,7 @@
     policy: deny
   when:
     - vu_manage_host_firewall | bool
-    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf']
 
 - name: "[U-28] ufw 출처별 허용 규칙"
   ufw:
@@ -82,7 +82,7 @@
   loop: "{{ (u28_pairs_raw.stdout if u28_pairs_raw.stdout | length > 0 else '[]') | from_json }}"
   when:
     - vu_manage_host_firewall | bool
-    - ansible_facts.pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf']
 
 - name: "[U-28:M] 방화벽 관련 지침 (토클 OFF 시)"
   debug:
