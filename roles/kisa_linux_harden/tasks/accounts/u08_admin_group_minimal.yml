@@ -4,14 +4,24 @@
 # 자동 조치 없음(멤버십 제거는 영업중단 리스크가 큼) — 인원 비교 자료 제공
 # =============================================================================
 
-- name: "[U-08:M] root 루트 구성원과 관리권 상승 수단 인벤토리"
+- name: "[U-08] root 그룹 멤버 추출"
+  shell: grep "^root:" /etc/group | cut -d: -f4 | tr "," "\n" | grep . || true
+  register: u08_root_members
+  changed_when: false
+  failed_when: false
+
+- name: "[U-08] sudoers(sudo/NOPASSWD) 행 추출"
+  shell: grep -E '(sudo|NOPASSWD)' /etc/sudoers 2>/dev/null | sed 's/^ *//' || true
+  register: u08_sudoers
+  changed_when: false
+  failed_when: false
+
+- name: "[U-08:M] root 그룹 구성원과 관리권 상승 수단 인벤토리"
   debug:
     msg: |
       root 그룹 구성원:
-        {{ lookup('pipe', 'grep "^root:" /etc/group | cut -d: -f4 | tr "," "\\n" | grep .') | default('-') }}
+        {{ (u08_root_members.stdout_lines | default([]) | join('\n    ') | default('-')) if u08_root_members.stdout_lines|length > 0 else '-' }}
       sudoers 계열:
-        {{ (lookup('file', '/etc/sudoers').splitlines() | default([])
-           | select('match', '(sudo|NOPASSWD)')
-           | map('trim') | list) | join('; ') | default('-') }}
+        {{ (u08_sudoers.stdout_lines | default([]) | join('; ')) if u08_sudoers.stdout_lines|length > 0 else '-' }}
       ※ 위의 계정들이 모두 현역 담당자인지 사람이 확인한 뒤 불필요 멤버를
         deluser/userdel 또는 visudo에서 빼줘
