@@ -27,52 +27,90 @@
       필요시 --become 또는 --ask-become-pass 로 재실행하십시오.
   tags: [always]
 
-- name: "[PREP] 계정 DB 원본 수집 (/etc/passwd·/etc/shadow·/etc/group — 원격에서)"
-  slurp:
-    src: "{{ item }}"
-  register: vu_db_src
-  loop:
-    - /etc/passwd
-    - /etc/shadow
-    - /etc/group
+# vu_users: JSON 배열로 파싱 — set_fact + Jinja2 >- 는 항상 str 이 되므로 shell + from_json 사용
+- name: "[PREP] 사용자 데이터베이스 로드 (/etc/passwd 파싱 → JSON)"
+  shell: |
+    python3 -c "
+    import json, sys
+    users = []
+    with open('/etc/passwd') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(':')
+            if len(parts) >= 7:
+                users.append({
+                    'name': parts[0],
+                    'uid': int(parts[2]),
+                    'home': parts[5],
+                    'shell': parts[6]
+                })
+    print(json.dumps(users))
+    "
+  register: vu_users_raw
+  changed_when: false
   failed_when: false
   tags: [always]
 
-- name: "[PREP] 사용자 데이터베이스 로드 (/etc/passwd 파싱)"
+- name: "[PREP] vu_users 팩트 등록 (JSON → dict)"
   set_fact:
-    vu_users: |
-      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/passwd') | list | first).content | default('') | b64decode %}
-      {% set nav = [] %}
-      {% for l in src.splitlines() | select('match', '^.+') %}
-        {% set fs = l.split(':') %}
-        {% set _ = nav.append({'name': fs[0], 'uid': fs[2] | int, 'home': fs[5], 'shell': fs[6]}) %}
-      {% endfor %}
-      {{ nav }}
+    vu_users: "{{ vu_users_raw.stdout | from_json }}"
   tags: [always]
 
+# vu_md5_users: 약한 해시(MD5) 사용 계정
 - name: "[PREP] 약한 해시(MD5) 사용 중인 계정 프로빙 (U-13 참조)"
-  set_fact:
-    vu_md5_users: |
-      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/shadow') | list | first).content | default('') | b64decode %}
-      {% set nav = [] %}
-      {% for l in src.splitlines() | select('match', '^.:') %}
-        {% set f = l.split(':') %}
-        {% if f | length > 1 and f[1] is match('^\\$1\\$') %}
-          {% set _ = nav.append(f[0]) %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json, sys
+    names = []
+    try:
+        with open('/etc/shadow') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(':')
+                if len(parts) > 1 and parts[1].startswith('\$1\$'):
+                    names.append(parts[0])
+    except PermissionError:
+        pass
+    print(json.dumps(names))
+    "
+  register: vu_md5_raw
+  changed_when: false
+  failed_when: false
   tags: [always]
 
-- name: "[PREP] wheel GID 조회 (U-06 su 제한)"
+- name: "[PREP] vu_md5_users 팩트 등록"
   set_fact:
-    vu_wheel_gid: >-
-      {% set src = (vu_db_src.results | selectattr('item', 'equalto', '/etc/group') | list | first).content | default('') | b64decode %}
-      {% set g = None %}
-      {% for l in src.splitlines() %}
-        {% if l.startswith('wheel:') %}{% set g = l.split(':')[2] | int %}{% endif %}
-      {% endfor %}
-      {{ g }}
+    vu_md5_users: "{{ vu_md5_raw.stdout | from_json }}"
+  tags: [always]
+
+# vu_wheel_gid: wheel 그룹 GID (없으면 null)
+- name: "[PREP] wheel GID 조회 (U-06 su 제한)"
+  shell: |
+    python3 -c "
+    import json
+    gid = None
+    try:
+        with open('/etc/group') as f:
+            for line in f:
+                if line.startswith('wheel:'):
+                    parts = line.split(':')
+                    gid = int(parts[2])
+    except (FileNotFoundError, PermissionError):
+        pass
+    print(json.dumps(gid))
+    "
+  register: vu_wheel_gid_raw
+  changed_when: false
+  failed_when: false
+  tags: [always]
+
+- name: "[PREP] vu_wheel_gid 팩트 등록"
+  set_fact:
+    vu_wheel_gid: "{{ vu_wheel_gid_raw.stdout | from_json }}"
   tags: [always]
 
 - name: "[PREP] 백업 루트 디렉터리 확보"
@@ -100,25 +138,46 @@
   tags: [always]
 
 - name: "[PREP] 활성 고위험 토글 집계"
+  shell: |
+    python3 -c "
+    import json, os
+    toggles = [
+        ('vu_pam_strict_stack', 'PAM 스택 직접 조작(U-02/U-03)'),
+        ('vu_manage_host_firewall', '호스트 방화벽 활성화(U-28)'),
+        ('vu_legacy_service_cleanup', '레거시 패키지 제거(U-36등)'),
+        ('vu_mask_rpcbind', 'rpcbind 봉쇄(U-42)'),
+        ('vu_lock_extra_uid0', 'UID-0 여분 계정 격리(U-05)'),
+        ('vu_apply_dup_uid', '중복 UID 재할당(U-10)'),
+        ('vu_strip_world_writable', 'ww-bit 자동 제거(U-25)'),
+        ('vu_del_ftp_pub_dir', '/var/ftp/pub 삭제(U-35)'),
+        ('vu_nfs_manage_exports', '/etc/exports 재생성(U-40)')
+    ]
+    # Ansible facts 파일을 읽는 대신, 빈 배열 반환 (vars 접근 불가)
+    print(json.dumps([]))
+    "
+  register: vu_enabled_high_risk_raw
+  changed_when: false
+  failed_when: false
+  tags: [always]
+
+- name: "[PREP] vu_enabled_high_risk 팩트 등록 (vars 기반 필터)"
   set_fact:
-    vu_enabled_high_risk: |
-      {% set kv_list = [
-          ('vu_pam_strict_stack', 'PAM 스택 직접 조작(U-02/U-03)'),
-          ('vu_manage_host_firewall', '호스트 방화벽 활성화(U-28)'),
-          ('vu_legacy_service_cleanup', '레거시 패키지 제거(U-36등)'),
-          ('vu_mask_rpcbind', 'rpcbind 봉쇄(U-42)'),
-          ('vu_lock_extra_uid0', 'UID-0 여분 계정 격리(U-05)'),
-          ('vu_apply_dup_uid', '중복 UID 재할당(U-10)'),
-          ('vu_strip_world_writable', 'ww-bit 자동 제거(U-25)'),
-          ('vu_del_ftp_pub_dir', '/var/ftp/pub 삭제(U-35)'),
-          ('vu_nfs_manage_exports', '/etc/exports 재생성(U-40)')] %}
-      {% set nav = [] %}
-      {% for kv in kv_list %}
-        {% if vars[kv[0]] | default(false) | bool %}
-          {% set _ = nav.append(kv[1]) %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+    vu_enabled_high_risk: "{{ _high_risk }}"
+  vars:
+    _high_risk: >-
+      {{
+          [('PAM 스택 직접 조작(U-02/U-03)', vu_pam_strict_stack),
+           ('호스트 방화벽 활성화(U-28)', vu_manage_host_firewall),
+           ('레거시 패키지 제거(U-36등)', vu_legacy_service_cleanup),
+           ('rpcbind 봉쇄(U-42)', vu_mask_rpcbind),
+           ('UID-0 여분 계정 격리(U-05)', vu_lock_extra_uid0),
+           ('중복 UID 재할당(U-10)', vu_apply_dup_uid),
+           ('ww-bit 자동 제거(U-25)', vu_strip_world_writable),
+           ('/var/ftp/pub 삭제(U-35)', vu_del_ftp_pub_dir),
+           ('/etc/exports 재생성(U-40)', vu_nfs_manage_exports)]
+          | selectattr('1')
+          | map(attribute='0')
+          | list }}
   tags: [always]
 
 - name: "[PREP] 고위험 토글 알림"
