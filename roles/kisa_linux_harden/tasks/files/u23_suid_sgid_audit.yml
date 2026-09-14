@@ -14,20 +14,29 @@
   failed_when: false
 
 - name: "[U-23] 화이트리스트 밖 대상 추출"
-  set_fact:
-    u23_suspicious: |
-      {% set nav = [] %}
-      {% for p in u23_raw.stdout_lines | default([]) %}
-        {% set bn = p | basename %}
-        {% if bn not in (vu_trusted_suid_bins | default([])) %}
-          {% set _ = nav.append(p ~ '   (basename: ' ~ bn ~ ')') %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json, os
+    trusted = {{ vu_trusted_suid_bins | default([]) | to_json }}
+    suspicious = []
+    raw = '''{{ u23_raw.stdout_lines | default([]) | to_json }}'''.strip()
+    if raw:
+        paths = json.loads(raw)
+    else:
+        paths = []
+    for p in paths:
+        bn = os.path.basename(p)
+        if bn not in trusted:
+            suspicious.append(p + '   (basename: ' + bn + ')')
+    print(json.dumps(suspicious))
+    "
+  register: u23_suspicious_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-23:M] 화이트리스트 이탈 리포트 (삭제 여부는 사람 결정)"
   debug:
     msg: >-
       화이트리스트에 없는 SUID/SGID:
-      {{ (u23_suspicious) | join('\n    ') | default('- 없음 (양호)') }}
+      {{ (u23_suspicious_raw.stdout | from_json | default([])) | join('\n    ') | default('- 없음 (양호)') }}
       ※ 필요 없는 파일은 `chmod u-s,g-s <경로>` 로 bit 제거 후 재점검

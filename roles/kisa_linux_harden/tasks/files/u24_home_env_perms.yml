@@ -4,23 +4,33 @@
 # =============================================================================
 
 - name: "[U-24] 대상 파일 조합 만들기 (home x rc-file)"
-  set_fact:
-    u24_pairs: |
-      {% set nav = [] %}
-      {% for u in vu_users %}
-        {% if (u.home | string) is match('^/home/.*') %}
-          {% for f in vu_home_rc_files | default(['.bashrc', '.profile', '.bash_profile']) %}
-            {% set _ = nav.append({'path': u.home ~ '/' ~ f, 'uid': u.uid}) %}
-          {% endfor %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json
+    pairs = []
+    rc_files = ['.bashrc', '.profile', '.bash_profile']
+    with open('/etc/passwd') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(':')
+            if len(parts) >= 7:
+                name, uid, home = parts[0], int(parts[2]), parts[5]
+                if home.startswith('/home/'):
+                    for f in rc_files:
+                        pairs.append({'path': home + '/' + f, 'uid': uid})
+    print(json.dumps(pairs))
+    "
+  register: u24_pairs_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-24] RC 파일 stat"
   stat:
     path: "{{ item.path }}"
   register: u24_stat
-  loop: "{{ u24_pairs }}"
+  loop: "{{ u24_pairs_raw.stdout | from_json | default([]) }}"
   loop_control:
     label: "{{ item.path }}"
 

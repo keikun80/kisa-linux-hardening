@@ -11,14 +11,25 @@
   failed_when: false
 
 - name: "[U-51] 위험 선언(any) 추출"
-  set_fact:
-    u51_risky: |
-      {{ u51_raw.stdout_lines | default([])
-         | select('search', '=\\s*any\\s*;|\\bany\\b') | list }}
+  shell: |
+    python3 -c "
+    import json, re
+    raw = '''{{ u51_raw.stdout_lines | default([]) | to_json }}'''.strip()
+    lines = json.loads(raw) if raw else []
+    risky = []
+    for line in lines:
+        if re.search(r'=\\s*any\\s*;|\\bany\\b', line):
+            risky.append(line)
+    print(json.dumps(risky))
+    "
+  register: u51_risky_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-51:M] Dynamic-Update 상태 리포트"
   debug:
     msg: >-
       {{ '위험 선언 발견 — "none;" 이나 제한된 뷰로 사람 수정: '
-         ~ (u51_risky | join(' ; ')) if u51_risky | length > 0
+         ~ ((u51_risky_raw.stdout | from_json | default([])) | join(' ; '))
+         if (u51_risky_raw.stdout | from_json | default([])) | length > 0
          else '위험한 allow-update(any) 없음 (양호 / named 미구동도 포함)' }}

@@ -5,32 +5,38 @@
 #       그룹명/멤버 수치를 바탕으로 사람이 처분한다 (visudo/grpck -y 유사 패턴)
 # =============================================================================
 
-- name: "[U-09]_passwd 유저 셋"
-  set_fact:
-    u09_valid_users: "{{ vu_users | map(attribute='name') | list }}"
+- name: "[U-09] 존재하지 않는 그룹 멤버 추출"
+  shell: |
+    python3 -c "
+    import json
+    passwd_users = set()
+    with open('/etc/passwd') as f:
+        for line in f:
+            if line.strip():
+                parts = line.split(':')
+                if parts:
+                    passwd_users.add(parts[0])
 
-- name: "[U-09] 그룹 멤버 중 존재하지 않는 아이디 추출"
-  set_fact:
-    u09_ghosts: |
-      {% set nav = [] %}
-      {% for l in lookup('file', '/etc/group').splitlines() %}
-        {% if ':' in l %}
-          {% set gs = l.split(':') %}
-          {% if gs | length > 3 and gs[3] != '' %}
-            {% for m in gs[3].split(',') %}
-              {% if m != '' and m not in u09_valid_users %}
-                {% set _ = nav.append(gs[0] ~ ' <- ' ~ m) %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+    ghosts = []
+    with open('/etc/group') as f:
+        for line in f:
+            if ':' not in line:
+                continue
+            parts = line.split(':')
+            if len(parts) > 3 and parts[3]:
+                for member in parts[3].split(','):
+                    if member and member not in passwd_users:
+                        ghosts.append(parts[0] + ' <- ' + member)
+    print(json.dumps(ghosts))
+    "
+  register: u09_ghosts_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-09:M] Ghost member report(remove determined by person)"
   debug:
     msg: >-
-      {{ '존재하지 않는 멤버 발견: ' ~ u09_ghosts | join(' ; ')
-         if u09_ghosts | length > 0
+      {{ '존재하지 않는 멤버 발견: ' ~ ((u09_ghosts_raw.stdout | from_json | default([])) | join(' ; '))
+         if (u09_ghosts_raw.stdout | from_json | default([])) | length > 0
          else 'ghost 멤버 없음 (양호)' }}
       처분 예: gpasswd -d <member> <group>

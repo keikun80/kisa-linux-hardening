@@ -5,22 +5,31 @@
 # =============================================================================
 
 - name: "[U-32] 부재 가정(home) 목록 산출"
-  set_fact:
-    u32_missing: |
-      {% set nav = [] %}
-      {% for u in vu_users %}
-        {% if u.home is not match('^/') or u.home in ('/', '~') %}{% continue %}{% endif %}
-        {% if u.home is match('^(\\/home|\\/root)(\\/|$)') %}
-          {% set _ = nav.append({'user': u.name, 'path': u.home, 'uid': u.uid}) %}
-        {% endif %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json
+    missing = []
+    with open('/etc/passwd') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(':')
+            if len(parts) >= 7:
+                name, uid, home = parts[0], int(parts[2]), parts[5]
+                if home.startswith('/home/') or home == '/home' or home.startswith('/root'):
+                    missing.append({'user': name, 'path': home, 'uid': uid})
+    print(json.dumps(missing))
+    "
+  register: u32_missing_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-32] home 경로 실존 확인 (stat)"
   stat:
     path: "{{ item.path }}"
   register: u32_stat
-  loop: "{{ u32_missing }}"
+  loop: "{{ u32_missing_raw.stdout | from_json | default([]) }}"
   loop_control:
     label: "{{ item.user }}:{{ item.path }}"
 

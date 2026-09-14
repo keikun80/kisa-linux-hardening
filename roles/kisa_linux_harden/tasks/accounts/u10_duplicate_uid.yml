@@ -7,20 +7,27 @@
 # =============================================================================
 
 - name: "[U-10] UID 가 겹키는 계정 집합 산출"
-  set_fact:
-    u10_dup_uids: |
-      {% set acc = {} %}
-      {% for u in vu_users %}
-        {% if u.uid | int > 0 %}
-          {% set kk = u.uid | string %}
-          {% set _ = acc.update({kk: (acc.get(kk, []) + [u.name])}) %}
-        {% endif %}
-      {% endfor %}
-      {% set nav = [] %}
-      {% for k in acc.keys() | sort %}
-        {% if acc[k] | length > 1 %}{% set _ = nav.append({'uid': k, 'users': acc[k]}) %}{% endif %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json, collections
+    uid_map = collections.defaultdict(list)
+    with open('/etc/passwd') as f:
+        for line in f:
+            if line.strip():
+                parts = line.split(':')
+                if parts:
+                    uid = int(parts[2])
+                    if uid > 0:
+                        uid_map[uid].append(parts[0])
+    dups = []
+    for uid, users in sorted(uid_map.items()):
+        if len(users) > 1:
+            dups.append({'uid': str(uid), 'users': users})
+    print(json.dumps(dups))
+    "
+  register: u10_dup_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-10] 중복 UID 계정 새 UID 로 재할당 (토클+매핑 필요)"
   user:
@@ -36,8 +43,8 @@
 - name: "[U-10:M] 중복 UID 리포트 / 처분 안내"
   debug:
     msg: >-
-      {{ '겹치는 UID: ' ~ u10_dup_uids | tojson
-         if u10_dup_uids | length > 0 else 'UID 중복 없음 (양호)' }}
+      {{ '겹치는 UID: ' ~ (u10_dup_raw.stdout | from_json | default([])) | tojson
+         if (u10_dup_raw.stdout | from_json | default([])) | length > 0 else 'UID 중복 없음 (양호)' }}
       {{ '재할당은 -e vu_apply_dup_uid=true -e vu_dup_uid_newvals={"계정명": 새UID} 로 수행 후,
           chown -R --from=옛UID 새UID /대상경로 까지 병행 바람'
-         if u10_dup_uids | length > 0 else '' }}
+         if (u10_dup_raw.stdout | from_json | default([])) | length > 0 else '' }}

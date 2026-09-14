@@ -12,15 +12,26 @@
   failed_when: false
 
 - name: "[U-50] 위험 선언(any/anywhere) 추출"
-  set_fact:
-    u50_risky: |
-      {{ u50_tf.stdout_lines | default([])
-         | select('search', '=\\s*(any|anywhere)\\s*;') | list }}
+  shell: |
+    python3 -c "
+    import json, re
+    raw = '''{{ u50_tf.stdout_lines | default([]) | to_json }}'''.strip()
+    lines = json.loads(raw) if raw else []
+    risky = []
+    for line in lines:
+        if re.search(r'=\\s*(any|anywhere)\\s*;', line):
+            risky.append(line)
+    print(json.dumps(risky))
+    "
+  register: u50_risky_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-50:M] Zone-Transfers 상태 리포트"
   debug:
     msg: >-
       {{ '위험 선언 발췌 (사람 수정 필요, "none;" 또는 슬레이브 IP로 제한): '
-         ~ (u50_risky | join(' ; ')) if u50_risky | length > 0
+         ~ ((u50_risky_raw.stdout | from_json | default([])) | join(' ; '))
+         if (u50_risky_raw.stdout | from_json | default([])) | length > 0
          else '위험한 allow-transfers 없음 — named 구동 시 기본값(None)이 아니라
               named.conf의 지역(zone) 단위가 사람 확인 대상. (named 미설치 = 양호)' }}

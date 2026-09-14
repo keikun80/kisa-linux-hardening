@@ -6,23 +6,35 @@
 # =============================================================================
 
 - name: "[U-11] nologin 인지 확인이 필요한 시스템 계정 추출"
-  set_fact:
-    u11_badshells: |
-      {{ vu_users
-         | selectattr('name', 'in', vu_system_accounts)
-         | rejectattr('shell', 'in', ['', '/bin/false', '/usr/sbin/nologin', '/sbin/nologin'])
-         | list }}
+  shell: |
+    python3 -c "
+    import json
+    system_accounts = {{ vu_system_accounts | to_json }}
+    badshells = []
+    with open('/etc/passwd') as f:
+        for line in f:
+            if line.strip():
+                parts = line.split(':')
+                if parts:
+                    name, shell = parts[0], parts[6]
+                    if name in system_accounts and shell not in ('', '/bin/false', '/usr/sbin/nologin', '/sbin/nologin'):
+                        badshells.append({'name': name, 'shell': shell})
+    print(json.dumps(badshells))
+    "
+  register: u11_badshells_raw
+  changed_when: false
+  failed_when: false
 
 - name: "[U-11] 시스템 계정 셸을 nologin 으로 전환"
   user:
     name: "{{ item.name }}"
     shell: /sbin/nologin
-  loop: "{{ u11_badshells }}"
+  loop: "{{ u11_badshells_raw.stdout | from_json | default([]) }}"
   loop_control:
     label: "{{ item.name }} ({{ item.shell }} -> /sbin/nologin)"
-  when: u11_badshells | length > 0
+  when: (u11_badshells_raw.stdout | from_json | default([])) | length > 0
 
 - name: "[U-11:M] 변환 현황 요약"
   debug:
-    msg: "nologin 화 한 계정: {{ u11_badshells | map(attribute='name') | list }}"
-  when: u11_badshells | length > 0
+    msg: "nologin 화 한 계정: {{ (u11_badshells_raw.stdout | from_json | default([])) | map(attribute='name') | list }}"
+  when: (u11_badshells_raw.stdout | from_json | default([])) | length > 0

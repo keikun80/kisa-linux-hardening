@@ -29,15 +29,20 @@
     - vu_firewall_allow_sources | length == 0
 
 - name: "[U-28] 방화벽 개방 쌍(출처 x 포트) 계산"
-  set_fact:
-    u28_pairs: |
-      {% set nav = [] %}
-      {% for s in vu_firewall_allow_sources | default([]) %}
-        {% for p in vu_firewall_tcp_ports | default([22]) %}
-          {% set _ = nav.append({'src': s, 'port': p | int}) %}
-        {% endfor %}
-      {% endfor %}
-      {{ nav }}
+  shell: |
+    python3 -c "
+    import json
+    sources = {{ vu_firewall_allow_sources | default([]) | to_json }}
+    ports = {{ vu_firewall_tcp_ports | default([22]) | to_json }}
+    pairs = []
+    for s in sources:
+        for p in ports:
+            pairs.append({'src': s, 'port': int(p)})
+    print(json.dumps(pairs))
+    "
+  register: u28_pairs_raw
+  changed_when: false
+  failed_when: false
   when: vu_manage_host_firewall | bool
 
 - name: "[U-28] firewalld 활성화 (RHEL 계열)"
@@ -54,7 +59,7 @@
     permanent: true
     immediate: true
     rich_rule: "rule family ipv4 source address={{ item.src }} port port={{ item.port }} protocol=tcp accept"
-  loop: "{{ u28_pairs }}"
+  loop: "{{ u28_pairs_raw.stdout | from_json | default([]) }}"
   when:
     - vu_manage_host_firewall | bool
     - ansible_facts.pkg_mgr in ['yum', 'dnf']
@@ -74,7 +79,7 @@
     src: "{{ item.src }}"
     proto: tcp
     port: "{{ item.port }}"
-  loop: "{{ u28_pairs }}"
+  loop: "{{ u28_pairs_raw.stdout | from_json | default([]) }}"
   when:
     - vu_manage_host_firewall | bool
     - ansible_facts.pkg_mgr not in ['yum', 'dnf']
