@@ -7,9 +7,8 @@
 - name: "[U-08:M] root 루트 구성원과 관리권 상승 수단 인벤토리"
   debug:
     msg: |
-      root 루트 구성원:
-        {{ (lookup('file', '/etc/group').splitlines() | select('match', '^root:') | list)
-           | map('split', ':') | map('nth', 3) | select('length') | list }}
+      root 그룹 구성원:
+        {{ lookup('pipe', 'grep "^root:" /etc/group | cut -d: -f4 | tr "," "\\n" | grep .') | default('-') }}
       sudoers 계열:
         {{ (lookup('file', '/etc/sudoers').splitlines() | default([])
            | select('match', '(sudo|NOPASSWD)')
