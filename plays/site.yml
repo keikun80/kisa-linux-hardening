@@ -22,7 +22,7 @@
 # 태그 체계 : u-01 … u-67 (ID), cat.accounts/cat.files/cat.services/cat.lifecycle
 # =============================================================================
 - name: KISA 주요기반시설 Linux 취약점 강화 및 감사 (U-01 ~ U-67)
-  hosts: "{{ distro_select | default('all') }}"   # al2023 / fedora / ubuntu / all(미설정 기본)
+  hosts: "{{ distro_select | default('al2023') }}"   # al2023 / fedora / ubuntu / all(미설정 기본)
   serial: 1                # 일괄 확산 사고 방지. 안정 확인 후 serial: 3 등 완화
   become: true             # 강제 작업은 root 로 수행
   become_method: sudo
