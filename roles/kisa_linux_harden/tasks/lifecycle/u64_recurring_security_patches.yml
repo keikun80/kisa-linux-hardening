@@ -46,6 +46,7 @@
     name: "{{ vu_autopatch.timer_unit }}"
     state: started
     enabled: true
+  ignore_errors: true
   when:
     - vu_autopatch_security | bool
     - ansible_pkg_mgr in ['yum', 'dnf']
@@ -77,6 +78,7 @@
     name: "{{ item }}"
     state: started
     enabled: true
+  ignore_errors: true
   loop:
     - apt-daily.timer
     - "{{ vu_autopatch.timer_unit }}"
