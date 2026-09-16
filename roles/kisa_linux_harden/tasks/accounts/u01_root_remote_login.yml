@@ -18,7 +18,7 @@
 - name: "[U-01] sshd_config 본문에도 no 주입 (drop-in 의존 방지)"
   blockinfile:
     path: /etc/ssh/sshd_config
-    marker: ">>>> kisa-u-01 {mark} <<<<"
+    marker: "## >>>> kisa-u-01 {mark} <<<<"
     block: "PermitRootLogin no"
   notify: "reload sshd (sshd_config 반영)"
 
