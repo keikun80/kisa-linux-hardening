@@ -1,22 +1,50 @@
 # =============================================================================
-# U-66 정책에 맞는 시스템 로깅 설정 (syslog-daemon 설치 + 실행)
+# U-66 정책에 맞는 시스템 로깅 설정
+# 판단 기준: rsyslog 또는 journald 가 동작 중이어야 함
+# 자동 조치: rsyslog 있으면 활성화, 없으면 journald 확인
 # =========================================================================
 
-- name: "[U-66] rsyslog 패키지 설치"
-  package:
-    name: rsyslog
-    state: present
-  # syslog_ng 는 distro 의 옵션이지만 이 플레이는 RsysLog 중심으로 수렴
+- name: "[U-66] rsyslog 설치 여부 확인"
+  stat:
+    path: /usr/sbin/rsyslogd
+  register: u66_rsyslogd
 
-- name: "[U-66] rsyslog 서비스 활성화"
-  systemd:
-    name: rsyslog
-    state: started
-    enabled: true
+- name: "[U-66] rsyslog 패키지 설치 및 서비스 활성화"
+  block:
+    - name: "[U-66] rsyslog 패키지 설치"
+      package:
+        name: rsyslog
+        state: present
+
+    - name: "[U-66] rsyslog 서비스 활성화"
+      systemd:
+        name: rsyslog
+        state: started
+        enabled: true
+  when: u66_rsyslogd.stat.exists | default(false)
+
+- name: "[U-66] journald 서비스 확인 (rsyslog 없을 때)"
+  block:
+    - name: "[U-66] systemd-journald 서비스 활성화"
+      systemd:
+        name: systemd-journald
+        state: started
+        enabled: true
+
+    - name: "[U-66:M] journald 로그 설정 진단"
+      debug:
+        msg: |
+        rsyslog 미설치 → systemd-journald 사용 중
+        저장 정책 확인:
+          journalctl --verify
+          /etc/systemd/journald.conf (Storage=persistent?)
+          /var/log/journal/ 디렉터리 존재 여부
+  when: not (u66_rsyslogd.stat.exists | default(false))
 
 - name: "[U-66:M] 로그 저장소 정책 진단 (auditd 등 — 사람 확인)"
   debug:
     msg: |
       정책(기관)에서 요구하는 로그 항목/보관이 충족되는지 확인:
-        /etc/rsyslog.conf 또는 /etc/syslog-ng/syslog-ng.conf
+        rsyslog:   /etc/rsyslog.conf
+        journald:  /etc/systemd/journald.conf
       EC2: 로그 저장 기간은 CloudWatch Logs/FlowLogs 정책으로도 보강 가능.

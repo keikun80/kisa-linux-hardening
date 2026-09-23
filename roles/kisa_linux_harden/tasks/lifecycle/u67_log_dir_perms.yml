@@ -9,5 +9,5 @@
       paths: ["/var/log"]
       owner: root
       group: root
-      mode: "0755"
+      mode: "0640"
       required: true

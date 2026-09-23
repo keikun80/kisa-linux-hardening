@@ -3,6 +3,8 @@
 # ===========================================================================
 vu_pam_strict_stack: true          # U-02/U-03 PAM 조치 기본 자동 적용
 vu_su_wheel_group: wheel           # U-06
+vu_wheel_users:                    # U-06/U-08: wheel 그룹에 진입할 계정
+  - fedora
 
 vu_chrony_unit: chronyd            # U-65
 vu_legacysvc_pkgmap:

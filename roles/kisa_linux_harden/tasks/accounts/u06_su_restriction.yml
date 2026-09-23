@@ -5,6 +5,7 @@
 #   그룹: RHEL 계열=wheel / Debian 계열=sudo (vu_su_wheel_group 프로필 변수)
 # =============================================================================
 
+# ---------- su: pam_wheel 로 관리그룹만 가능하게 -------------------------------
 - name: "[U-06] pam_wheel 로 su 접근을 관리그룹만 가능하게"
   lineinfile:
     path: /etc/pam.d/su
@@ -16,6 +17,7 @@
     - vu_su_wheel_group is defined
     - lookup('fileglob', '/etc/pam.d/su', errors='ignore') | length > 0
 
+# ---------- su: 바이너리 권한 고정 (RHEL 계열) --------------------------------
 - name: "[U-06] su 바이너리를 관리그룹 SUID 전용(4750) 고정 (RHEL 계열)"
   file:
     path: "{{ item }}"
@@ -30,6 +32,28 @@
     - ansible_pkg_mgr in ['yum', 'dnf']
     - lookup('fileglob', item, errors='ignore') | length > 0
 
+# ---------- sudo: /etc/sudoers.d drop-in (관리그룹만 sudo 허용) ----------------
+- name: "[U-06] sudoers drop-in 으로 sudo 를 관리그룹 전용으로 제한"
+  copy:
+    dest: /etc/sudoers.d/99-kisa-wheel-sudo
+    content: "%{{ vu_su_wheel_group | default('wheel') }} ALL=(ALL) ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+  when:
+    - vu_su_wheel_group is defined
+    - lookup('fileglob', '/etc/sudoers.d', errors='ignore') | length > 0
+
+# ---------- wheel/sudo 그룹 멤버십: vu_wheel_users ----------------------------
+- name: "[U-06] vu_wheel_users 에 명시한 계정을 관리그룹에 추가"
+  user:
+    name: "{{ item }}"
+    groups: "{{ vu_su_wheel_group | default('wheel') }}"
+    append: true
+  loop: "{{ vu_wheel_users | default([]) }}"
+  when: vu_su_wheel_group is defined
+
+# ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------
 - name: "[U-06:M] Diagnosing su restriction state(strict OFF or wheel absent)"
   debug:
     msg: |

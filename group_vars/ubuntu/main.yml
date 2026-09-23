@@ -3,9 +3,11 @@
 # ===========================================================================
 # PAM 스택(common-auth/common-password) 자동 재배치는 ssh 로그인 단절 위험이 있어
 # 기본 OFF. 필요하다면 vu_pam_strict_stack: true 로 전환 (사전 백업 필수, staging 우선).
-vu_pam_strict_stack: false
+vu_pam_strict_stack: true
 # wheel 대체: pam_wheel 은 시스템에 존재하는 관리그룹(sudo) 기준으로 적용
 vu_su_wheel_group: sudo            # U-06
+vu_wheel_users:                    # U-06/U-08: sudo 그룹에 진입할 계정
+  - ubuntu
 
 vu_chrony_unit: chrony             # U-65
 vu_legacysvc_pkgmap:

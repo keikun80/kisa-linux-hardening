@@ -2,7 +2,7 @@
 # U-13 안전한 비밀번호 암호화 알고리즘 사용
 # 판단 기준: ENCRYPT_METHOD SHA512 (또는 SHA256)
 # 자동 조치: /etc/login.defs 의 ENCRYPT_METHOD 강제한력화;
-#            기존 MD5 해시 사용자는 목록만 보고 (재설정 유도)
+#            기존 MD5 해시 사용자는 SHA256 이상으로 강등 (재설정 유도)
 # =============================================================================
 
 - name: "[U-13] login.defs 해시 알고리즘 고정"
@@ -15,9 +15,30 @@
     group: root
     mode: "0644"
 
-- name: "[U-13:M] MD5 등 취약 해시로 남은 기존 계정 보고"
+# ---------- 취약 해시(MD5=$1$) 계정이 있으면 ENCRYPT_METHOD SHA256 강제 -------
+- name: "[U-13] 취약 해시(MD5) 계정 존재 시 login.defs SHA256 강등"
+  lineinfile:
+    path: /etc/login.defs
+    regexp: "^#?\\s*ENCRYPT_METHOD"
+    line: "ENCRYPT_METHOD SHA256"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - vu_md5_users | default([]) | length > 0
+  notify: "reload sshd (sshd_config 반영)"
+
+# ---------- 취약 해시 계정 passwd 재해시 유도 --------------------------------
+- name: "[U-13] MD5 해시 사용 계정의 패스워드 강제 변경 유도 (chage -d 0)"
+  command: "chage -d 0 {{ item }}"
+  loop: "{{ vu_md5_users | default([]) }}"
+  when: vu_md5_users | default([]) | length > 0
+
+- name: "[U-13:M] 취약 해시로 남은 기존 계정 보고"
   debug:
     msg: >-
       Remaining weak hashes (maintained until next password change):
       {{ vu_md5_users | default([]) | join(', ') | default('없음') }}
       — 해당 계정의 패스워드 초기화를 권장합니다.
+      ENCRYPT_METHOD 는 취약 계정 존재 시 SHA256 로 강등 처리됨.

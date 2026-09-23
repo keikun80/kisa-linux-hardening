@@ -4,6 +4,8 @@
 vu_pam_strict_stack: true          # RHEL 계열은 authselect 시대지만 pam faillock 직접 주입이 안정적
                                    # -> U-02/U-03 PAM 조치를 기본적으로 자동 적용
 vu_su_wheel_group: wheel           # U-06: /etc/pam.d/su 의 pam_wheel.group, su 바이너리는 root:wheel 4750
+vu_wheel_users:                    # U-06/U-08: wheel 그룹에 진입하여 sudo/su 사용 가능하도록 할 계정
+  - ec2-user
 
 vu_chrony_unit: chronyd            # U-65
 vu_legacysvc_pkgmap:               # U-34/36/44/52: vu_legacy_service_cleanup=true 일 때 제거 후보
