@@ -41,6 +41,7 @@
     path: "{{ item }}"
     mode: a-s
   loop: "{{ u23_suspicious_paths.stdout | default('[]') | from_json }}"
+  when: u23_suspicious_paths.stdout is defined and u23_suspicious_paths.stdout | length > 0
   failed_when: false
 
 # ---------- 리포트 --------------------------------------------------------------
