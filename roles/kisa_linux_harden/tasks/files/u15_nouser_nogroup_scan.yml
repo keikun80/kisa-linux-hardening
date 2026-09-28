@@ -32,3 +32,17 @@
       {{ u15_cmd.stdout_lines | default([]) | join('\n    ') | default('- 없음 (양호)') }}
       → 처리 방침: 새 서비스 계정을 만들어 소유권을 이관(useradd + chown),
         더 이상 쓸 것이 없다면 삭제 후 사람 승인
+
+# ---------- /var/spool/mail 하위 파일/디렉토리 삭제 --------------------------
+- name: "[U-15:scan] /var/spool/mail 하위 파일/디렉토리 수집"
+  find:
+    paths: /var/spool/mail
+    recurse: false
+  register: u15_mail_files
+
+- name: "[U-15] /var/spool/mail 하위 파일/디렉토리 삭제"
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ u15_mail_files.files | map(attribute='path') | list }}"
+  when: u15_mail_files.matched > 0
