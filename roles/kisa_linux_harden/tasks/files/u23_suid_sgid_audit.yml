@@ -2,18 +2,8 @@
 # U-23 SUID/SGID bit 파일 감사 (root 소유 바이너리에 집중)
 # 판단 기준: 신뢰 목록(vu_trusted_suid_bins, basename) 밖의 SUID/SGID
 #            이 없어야 양호
-# 자동 조치: pkexec, fusermount3 의 SUID/SGID 비트 제거
+# 자동 조치: 화이트리스트 밖 파일의 SUID/SGID 비트 자동 제거
 # =============================================================================
-
-# ---------- pkexec / fusermount3 SUID/SGID 제거 --------------------------------
-- name: "[U-23] pkexec, fusermount3 SUID/SGID 비트 제거"
-  file:
-    path: "{{ item }}"
-    mode: a-s
-  loop:
-    - /usr/bin/pkexec
-    - /usr/bin/fusermount3
-  failed_when: false
 
 # ---------- 전체 스캔 ----------------------------------------------------------
 - name: "[U-23:scan] SUID/SGID 파일 수집"
@@ -24,7 +14,7 @@
   changed_when: false
   failed_when: false
 
-- name: "[U-23] 화이트리스트 밖 대상 추출"
+- name: "[U-23] 화이트리스트 밖 대상 경로 추출"
   shell: |
     python3 -c "
     import json, os
@@ -38,16 +28,24 @@
     for p in paths:
         bn = os.path.basename(p)
         if bn not in trusted:
-            suspicious.append(p + '   (basename: ' + bn + ')')
+            suspicious.append(p)
     print(json.dumps(suspicious))
     "
-  register: u23_suspicious_raw
+  register: u23_suspicious_paths
   changed_when: false
   failed_when: false
 
-- name: "[U-23:M] 화이트리스트 이탈 리포트 (삭제 여부는 사람 결정)"
+# ---------- 화이트리스트 밖 SUID/SGID 비트 제거 ---------------------------------
+- name: "[U-23] 화이트리스트 밖 SUID/SGID 비트 자동 제거"
+  file:
+    path: "{{ item }}"
+    mode: a-s
+  loop: "{{ u23_suspicious_paths.stdout | default('[]') | from_json }}"
+  failed_when: false
+
+# ---------- 리포트 --------------------------------------------------------------
+- name: "[U-23] 제거 대상 리포트"
   debug:
     msg: >-
-      화이트리스트에 없는 SUID/SGID:
-      {{ ((u23_suspicious_raw.stdout if u23_suspicious_raw.stdout | length > 0 else '[]') | from_json) | join('\n    ') | default('- 없음 (양호)') }}
-      ※ 필요 없는 파일은 `chmod u-s,g-s <경로>` 로 bit 제거 후 재점검
+      SUID/SGID 제거 완료:
+      {{ u23_suspicious_paths.stdout | default('[]') | from_json | map('basename') | join(', ') | default('- 없음 (양호)') }}
