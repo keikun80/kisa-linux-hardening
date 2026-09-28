@@ -12,8 +12,12 @@
 vu_backups_root: /opt/backups/kisa_hardening
 
 # --- 1장 계정 관리 ----------------------------------------------------------
-# U-11: 로그인 셸이 남아있는 시스템 계정으로 돌려받을 대상.
-#        실제로 사용하고 있는 계정은 이 목록에서 제외할 것.
+# U-11: 시스템 계정 셸 nologin 강제 (KISA 가이드 U-11)
+#        /etc/passwd의 셸이 실행 가능한 로그인 셸(/bin/bash, /bin/sh 등)인 계정을
+#        /sbin/nologin 으로 전환합니다.
+#        - 이 목록에 포함된 계정은 시스템 서비스용 계정이며, 로그인할 필요가 없습니다.
+#        - 실제로 로그인이 필요한 서비스 계정(Jenkins, appexec 등)은 목록에서 제외하세요.
+#        - U-07에서 이미 lp, uucp, nuucp를 삭제하므로 중복 처리되어도 문제없습니다.
 vu_system_accounts:
   - daemon
   - bin
@@ -48,7 +52,7 @@ vu_login_unlock_time: 900
 # U-02/U-03 마스터 스위치: PAM 스택(faillock/pwquality) 조치 자동 적용 여부.
 # distro 그룹별로 오버라이드되며, 여기서 false 로 선언하는 이유는 프로필 외부의
 # 호스트라도 undefined-variable 오류 없이 안전하게 보고 모드로 동작하게 하기 때문.
-vu_pam_strict_stack: false
+vu_pam_strict_stack: true
 # U-06/U-08: wheel(또는 vu_su_wheel_group) 그룹에 속할 계정 목록.
 #     이 그룹에 들어간 계정이 sudo/su 명령을 쓸 수 있다(그룹 없음은 skip).
 #     기본값: AL2023/Fedora=ec2-user, Ubuntu=ubuntu (group_vars 에서 교체 가능).
@@ -91,7 +95,7 @@ vu_legacy_service_cleanup: false
 # U-54: cleartext FTP 서비스 중단(mask) — 기본 ON (서비스 중단 수준의 조치)
 vu_disable_plaintext_ftp: true
 # U-35: /var/ftp/pub 디렉터리 물리적 삭제 (데이터 손실 가능, 기본 OFF)
-vu_del_ftp_pub_dir: false
+vu_del_ftp_pub_dir: true
 # U-42: rpcbind mask — 외부 NFS 마운트(client 측)를 사용하는 호스트라면 반드시 OFF
 vu_mask_rpcbind: false
 # U-28: 호스트 방화벽(firewalld/ufw) 활성화.
