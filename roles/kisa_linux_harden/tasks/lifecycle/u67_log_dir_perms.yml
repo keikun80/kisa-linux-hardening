@@ -1,5 +1,6 @@
 # =============================================================================
 # U-67 로그 디렉터리(/var/log) 소유자 root + 권한 755 이하
+# 자동 조치: /var/log 하위 파일 640으로 변경
 # =============================================================================
 
 - import_tasks: "../frags/file_perms.yml"
@@ -11,3 +12,18 @@
       group: root
       mode: "0640"
       required: true
+
+- name: "[U-67:scan] /var/log 하위 파일 수집"
+  find:
+    paths: /var/log
+    recurse: true
+    file_type: file
+  register: u67_log_files
+
+- name: "[U-67] /var/log 하위 파일 권한 640으로 변경"
+  file:
+    path: "{{ item.path }}"
+    mode: "0640"
+  loop: "{{ u67_log_files.files }}"
+  when: u67_log_files.files | length > 0
+  failed_when: false
