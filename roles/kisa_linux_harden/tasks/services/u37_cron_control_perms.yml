@@ -3,12 +3,27 @@
 # 판단 기준: 640 이하 root
 # =============================================================================
 
+# ---------- cron/at 설정 파일 권한 640 ----------------------------------------
 - import_tasks: "../frags/file_perms.yml"
   vars:
     fp:
       label: "U-37"
-      paths: ["/etc/cron.allow", "/etc/cron.deny"]
+      paths: ["/etc/crontab", "/etc/cron.allow", "/etc/cron.deny", "/etc/at.allow", "/etc/at.deny"]
       owner: root
       group: root
       mode: "0640"
       required: false
+
+# ---------- cron/at 바이너리 권한 750 ------------------------------------------
+- name: "[U-37] cron/at 바이너리 권한 750으로 변경"
+  file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/usr/bin/at",    mode: "0750" }
+    - { path: "/usr/bin/atq",   mode: "0750" }
+    - { path: "/usr/bin/atrm",  mode: "0750" }
+    - { path: "/usr/bin/batch", mode: "0750" }
+  failed_when: false

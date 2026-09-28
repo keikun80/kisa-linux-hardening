@@ -74,7 +74,8 @@ vu_home_dir_max_mode: "755"
 vu_rc_file_mode: "0644"
 vu_home_rc_files: [".bashrc", ".profile", ".bash_profile"]
 # U-15/U-23/U-25: 전체 디스크 스웨프라면 비용이 크므로, 아래 경로까지만 자동 탐색
-vu_scan_roots: [/etc, /home, /opt, /srv, /var/spool, /usr/local]
+# SUID/SGID 감사를 위해 바이너리 디렉토리도 포함
+vu_scan_roots: [/etc, /usr/bin, /usr/sbin, /sbin, /bin, /home, /opt, /srv, /var/spool, /usr/local]
 # U-33: /etc 밑에서 무시할 닷(·)파일 화이트리스트
 vu_known_hidden_under_etc: []
 # U-23: 신뢰 SUID/SGID 바이너리 기본 목록 (basename 으로 비교)
