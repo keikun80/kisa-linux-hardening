@@ -14,6 +14,6 @@
     state: absent
   when:
     - vu_legacy_service_cleanup | bool
-    - vu_legacysvc_pkgmap.finger | length > 0
-  loop: "{{ vu_legacysvc_pkgmap.finger }}"
+    - vu_legacysvc_pkgmap.finger | default([]) | length > 0
+  loop: "{{ vu_legacysvc_pkgmap.finger | default([]) }}"
   failed_when: false
