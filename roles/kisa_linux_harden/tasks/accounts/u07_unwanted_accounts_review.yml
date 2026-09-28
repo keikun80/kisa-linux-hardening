@@ -16,6 +16,17 @@
     - printadmin
   failed_when: false
 
+- name: "[U-07] 서비스 계정 nologin 처리 (appexec, Jenkins, whatap, ston)"
+  user:
+    name: "{{ item }}"
+    shell: /sbin/nologin
+  loop:
+    - appexec
+    - Jenkins
+    - whatap
+    - ston
+  failed_when: false
+
 - name: "[U-07:M] 로그인 가능한 계정은 누구인가 (리뷰 목록)"
   debug:
     msg: >-

@@ -5,7 +5,16 @@
 #   그룹: RHEL 계열=wheel / Debian 계열=sudo (vu_su_wheel_group 프로필 변수)
 # =============================================================================
 
-# ---------- su: pam_wheel 로 관리그룹만 가능하게 -------------------------------
+# ---------- su: pam_wheel 로 관리그룹만 가능하게 (trust 제거) -------------------
+- name: "[U-06] pam.d/su 에서 trust 옵션 제거"
+  replace:
+    path: /etc/pam.d/su
+    regexp: '(^\\s*auth\\s+required\\s+pam_wheel\\.so\\b.*?)(\\s+trust\\b)(.*)'
+    replace: "\\1\\3"
+  when:
+    - vu_pam_strict_stack | bool
+    - lookup('fileglob', '/etc/pam.d/su', errors='ignore') | length > 0
+
 - name: "[U-06] pam_wheel 로 su 접근을 관리그룹만 가능하게"
   lineinfile:
     path: /etc/pam.d/su
