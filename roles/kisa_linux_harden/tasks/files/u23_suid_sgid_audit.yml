@@ -36,12 +36,16 @@
   failed_when: false
 
 # ---------- 화이트리스트 밖 SUID/SGID 비트 제거 ---------------------------------
+- name: "[U-23] SUID/SGID 제거 대상 변수 설정"
+  set_fact:
+    u23_strip_targets: "{{ u23_suspicious_paths.stdout | from_json if u23_suspicious_paths.stdout | length > 0 else [] }}"
+
 - name: "[U-23] 화이트리스트 밖 SUID/SGID 비트 자동 제거"
   file:
     path: "{{ item }}"
     mode: a-s
-  loop: "{{ u23_suspicious_paths.stdout | default('[]') | from_json }}"
-  when: u23_suspicious_paths.stdout is defined and u23_suspicious_paths.stdout | length > 0
+  loop: "{{ u23_strip_targets }}"
+  when: u23_strip_targets | length > 0
   failed_when: false
 
 # ---------- 리포트 --------------------------------------------------------------
@@ -49,4 +53,4 @@
   debug:
     msg: >-
       SUID/SGID 제거 완료:
-      {{ u23_suspicious_paths.stdout | default('[]') | from_json | map('basename') | join(', ') | default('- 없음 (양호)') }}
+      {{ u23_strip_targets | default([]) | map('basename') | join(', ') | default('- 없음 (양호)') }}
