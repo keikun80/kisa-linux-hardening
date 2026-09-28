@@ -36,7 +36,7 @@ vu_umask: "027"
 # U-02: 비밀번호 최대 유효기간(일) — /etc/login.defs PASS_MAX_DAYS
 vu_pass_max_days: 90
 # U-13: 신규 계정 해시 알고리즘(login.defs ENCRYPT_METHOD)
-vu_encryption_method: SHA512
+vu_encryption_method: yescrypt
 # U-02: 비밀번호 정책 (pwquality / pam_pwquality)
 vu_pw_minlen: 12
 vu_pw_ucredit: -1      # 대문자 요구 개수
