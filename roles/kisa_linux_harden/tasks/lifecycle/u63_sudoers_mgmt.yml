@@ -6,7 +6,7 @@
   vars:
     fp:
       label: "U-63"
-      paths: ["/etc/sudoers"]
+      paths: ["/etc/sudoers", "/etc/sudoers.d/99-docker-appexec"]
       owner: root
       group: root
       mode: "0440"
