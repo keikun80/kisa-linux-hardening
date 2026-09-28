@@ -5,7 +5,7 @@
 #   ⚠ ssh 로그인 경로에 영향을 주는 변경. 반드시 테스트 후 확대 시행.
 # =============================================================================
 
-# ---------- RHEL 계열: system-auth / password-auth ---------------------------
+# ---------- RHEL 계열: system-auth / password-auth (faillock + pam_tally2) ---------
 - name: "[U-03] faillock 라인 상향 (RHEL 계열 PAM 4행)"
   lineinfile:
     path: "{{ item.file }}"
@@ -20,6 +20,22 @@
     - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
     - { file: /etc/pam.d/system-auth,    regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
     - { file: /etc/pam.d/password-auth,  regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
+  loop_control:
+    label: "{{ item.file }} :: {{ item.line[:48] }}"
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf']
+    - file_stat(item.file).stat.exists | default(false)
+
+# ---------- RHEL 계열: pam_tally2 (legacy fallback) ---------------------------
+- name: "[U-03] pam_tally2 설정 추가 (RHEL 계열, legacy fallback)"
+  lineinfile:
+    path: "{{ item.file }}"
+    regexp: "^{{ item.regexp_prefix }}"
+    line: "{{ item.line }}"
+  loop:
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_tally2",          line: "auth required pam_tally2.so deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} onerr=fail" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_tally2",          line: "auth required pam_tally2.so deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} onerr=fail" }
   loop_control:
     label: "{{ item.file }} :: {{ item.line[:48] }}"
   when:
