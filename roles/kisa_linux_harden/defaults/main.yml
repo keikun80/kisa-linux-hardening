@@ -32,10 +32,6 @@ vu_system_accounts:
   - cnr
   - man
   - nobody
-  - jenkins
-  - appexec
-  - ston
-  - whatap
 # U-12: 유휴 셸 세션 타임아웃(초) — 가이드 600 이하 권장
 vu_tmout_sec: 600
 # U-30: 기본 UMASK — 가이드 022 이상 (여긴 더 엄격한 027)
