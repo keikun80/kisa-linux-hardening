@@ -74,26 +74,11 @@ vu_home_rc_files: [".bashrc", ".profile", ".bash_profile"]
 vu_scan_roots: [/etc, /home, /opt, /srv, /var/spool, /usr/local]
 # U-33: /etc 밑에서 무시할 닷(·)파일 화이트리스트
 vu_known_hidden_under_etc: []
-# U-23: 신뢰 SUID/SGID 바이너리 기본 목록 (basename 으로 비교. 추가 필요시 확장)
+# U-23: 신뢰 SUID/SGID 바이너리 기본 목록 (basename 으로 비교)
+#       sudo, ksu 만 유지. 나머지는 자동 제거
 vu_trusted_suid_bins:
-  - passwd
-  - su
-  - newgrp
-  - chage
-  - chfn
-  - chsh
-  - expiry
-  - gpasswd
-  - pkexec
-  - polkit-agent-helper-1
-  - mount
-  - umount
-  - uuidd
-  - fusermount
-  - fusermount3
   - sudo
-  - crtk
-  - crtk3
+  - ksu
 # 고위험: U-25 world-writable 비트 자동 제거 (기본은 보고만)
 vu_strip_world_writable: false
 # U-56/U-57: FTP 거부 목록에 추가할 계정 (기본값은 시스템 계정 목록이 포함됨)
