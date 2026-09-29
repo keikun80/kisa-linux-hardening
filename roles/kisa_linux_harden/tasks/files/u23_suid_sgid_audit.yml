@@ -38,7 +38,13 @@
 # ---------- 화이트리스트 밖 SUID/SGID 비트 제거 ---------------------------------
 - name: "[U-23] SUID/SGID 제거 대상 변수 설정"
   set_fact:
-    u23_strip_targets: "{{ u23_suspicious_paths.stdout | from_json if u23_suspicious_paths.stdout | length > 0 else [] }}"
+    u23_strip_targets: "{{ u23_suspicious_paths.stdout | from_json }}"
+  when: u23_suspicious_paths.stdout is defined and u23_suspicious_paths.stdout | length > 0
+
+- name: "[U-23] SUID/SGID 제거 대상 변수 초기화 (스캔 대상 없음)"
+  set_fact:
+    u23_strip_targets: []
+  when: u23_suspicious_paths.stdout is not defined or u23_suspicious_paths.stdout | length == 0
 
 - name: "[U-23] 화이트리스트 밖 SUID/SGID 비트 자동 제거"
   shell: "chmod a-s {{ item }}"
