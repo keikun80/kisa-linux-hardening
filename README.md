@@ -1,8 +1,14 @@
-# qwen_ansible — KISA Linux 취약점 감사·강화 플레이북
+# KISA Linux Hardening — 취약점 감사·강화 플레이북
 
 > **KISA(한국인터넷보안아카데미) 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드**에 맞춰 Linux 서버 67개 점검항목(U-01~U-67)을 Ansible로 자동화합니다.
 >
 > 읽기 전용 감사에서 실제 강화 적용까지 — 한 playbook으로 끝냅니다.
+
+## 버전
+
+| 태그 | 날짜 | 주요 내용 |
+|------|------|----------|
+| `v1.0.0` | 2026-09-29 | U-23 SUID/SGID 자동 제거, U-37 cron/at 권한, U-03 pam_tally2 제거 |
 
 ## 사전 요구사항
 
@@ -73,19 +79,135 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 
 ## 프로젝트 구조
 
-| 경로 | 역할 |
-|------|------|
-| `plays/site.yml` | 진입점 — `serial: 1`(순차실행), `become: sudo` |
-| `roles/kisa_linux_harden/` | 핵심 역할: `tasks/`(번호별 태스크), `defaults/`(설정), `handlers/` |
-| `group_vars/<그룹>/` | al2023 · fedora · ubuntu별 특화 프로파일 |
-| `inventory/ec2.ini` | 정적 인벤토리 (실제 호스트 주소 입력 필요) |
-| `scripts/audit.sh` | 감사 래퍼: `--check --diff` 강제 → `reports/<시간>/` 생성 |
-| `scripts/report.py` | NDJSON → `SUMMARY.md`(매트릭스) + `detail.csv` |
-| `scripts/detect_contamination.py` | 문서·코드 외부 문자(CJK) 침투 회귀검사 |
-| `callbacks/results_json.py` | NDJSON 이벤트 출력 콜백 (stderr) |
-| `_selftest/local.ini` | 로컬 스모크테스트 인벤토리 |
-| `reports/` | 감사 산출물 (실행당 1개 디렉토리) |
-| `_source_ref/` | 기존 셸스크립트 감사기, 수동체크 가이드 (읽기 전용) |
+```
+├── plays/
+│   └── site.yml              # 진입점 (serial: 1, become: sudo)
+├── roles/
+│   └── kisa_linux_harden/
+│       ├── defaults/
+│       │   └── main.yml      # 전역 설정 변수 (U-01~U-67)
+│       ├── handlers/
+│       │   └── main.yml      # sshd reload 등 핸들러
+│       └── tasks/
+│           ├── 00_prep.yml   # 전처리: distro 감지, root 확인, 백업 준비
+│           ├── main.yml      # 오케스트레이션 (모든 U-ID import)
+│           ├── accounts/     # 계정 관리 (U-01~U-13)
+│           ├── files/        # 파일·디렉터리 관리 (U-14~U-33)
+│           ├── services/     # 서비스 관리 (U-34~U-62)
+│           ├── lifecycle/    # 생명주기 관리 (U-63~U-67)
+│           └── frags/        # 재사용 가능한 코드 조각
+│               ├── file_perms.yml  # 파일 권한 설정 공통 패턴
+│               └── unit_off.yml    # 서비스 중지+mask 공통 패턴
+├── group_vars/
+│   ├── al2023/main.yml       # Amazon Linux 2023 특화
+│   ├── fedora/main.yml       # Fedora 특화
+│   └── ubuntu/main.yml       # Ubuntu 특화
+├── inventory/
+│   └── ec2.example.ini       # 인벤토리 예시
+├── scripts/
+│   ├── audit.sh              # 감사 래퍼 (--check --diff 강제, 리포트 자동 생성)
+│   ├── report.py             # NDJSON → SUMMARY.md + detail.csv
+│   ├── detect_contamination.py  # 외부 문자(CJK) 침투 검사
+│   └── fix_known_lines.py    # 문자 오염 패처 (역사적)
+├── callbacks/
+│   └── results_json.py       # NDJSON 이벤트 출력 콜백
+├── ansible.cfg               # Ansible 설정
+├── _selftest/
+│   └── local.ini             # 로컬 스모크테스트 인벤토리
+├── reports/                  # 감사 산출물 (실행당 1개 디렉토리)
+└── _source_ref/              # 기존 셸스크립트 감사기, 수동체크 가이드 (읽기 전용)
+```
+
+---
+
+## 점검 항목
+
+### 1장: 계정 관리 (U-01~U-13)
+
+| ID | 항목 | 자동 조치 |
+|----|------|-----------|
+| U-01 | root 원격로그인 차단 | ✔ sshd_config 설정 |
+| U-02 | 비밀번호 정책 (최대기간, 복잡도) | ✔ login.defs, pwquality |
+| U-03 | 계정 잠금 임계값 | ✔ pam_faillock 설정 |
+| U-04 | /etc/passwd 해시 격리 | ✔ 해시 제거+계정 잠금 |
+| U-05 | UID-0 계정 격리 | 선택 (vu_lock_extra_uid0) |
+| U-06 | su 접근 제한 (pam_wheel) | ✔ trust 제거, SUID 4750 |
+| U-07 | 불필요 계정 삭제 | ✔ lp/uucp/nuucp/printadmin |
+| U-08 | 관리자 그룹 최소화 | ✔ wheel 그룹 구성 |
+| U-09 | 유령 GID 멤버십 정리 | ✔ 정리 |
+| U-10 | 중복 UID 재할당 | 선택 (vu_apply_dup_uid) |
+| U-11 | 시스템 계정 셸 nologin | ✔ nologin 설정 |
+| U-12 | 유휴 세션 타임아웃 | ✔ TMOUT 설정 |
+| U-13 | 해시 알고리즘 (yescrypt) | ✔ ENCRYPT_METHOD |
+
+### 2장: 파일·디렉터리 관리 (U-14~U-33)
+
+| ID | 항목 | 자동 조치 |
+|----|------|-----------|
+| U-14 | 환경 파일 권한 | ✔ 0644 |
+| U-15 | 소유자 없는 파일 정리 | ✔ 삭제 |
+| U-16 | /etc/passwd 계열 권한 | ✔ 0644/0600 |
+| U-17 | 부트 스크립트 권한 | ✔ 0750 이하 |
+| U-18 | /etc/shadow 권한 | ✔ 0600 |
+| U-19 | /etc/hosts 계열 권한 | ✔ 0644 |
+| U-20 | xinetd 설정 파일 권한 | ✔ 0644 |
+| U-21 | syslog 설정 파일 권한 | ✔ 0644 |
+| U-22 | /etc/services 파일 권한 | ✔ 0644 |
+| U-23 | SUID/SGID 파일 감사 | ✔ whitelist 외 제거 |
+| U-24 | 홈 디렉터리 환경 파일 권한 | ✔ 0644 |
+| U-25 | 세계쓰기 파일 점검 | 선택 (vu_strip_world_writable) |
+| U-26 | /dev 일반 파일 점검 | ✔ 리포트 |
+| U-27 | r-commands 제거 | ✔ 삭제 |
+| U-28 | 방화벽 설정 | 선택 (vu_manage_host_firewall) |
+| U-29 | /etc/hosts.lpd 권한 | ✔ 0644 |
+| U-30 | UMASK 정책 | ✔ 027 |
+| U-31 | 홈 디렉터리 권한 | ✔ 0755 이하 |
+| U-32 | 홈 디렉터리 존재 확인 | ✔ 생성 |
+| U-33 | 숨김 파일(.dot) 점검 | ✔ 리포트 |
+
+### 3장: 서비스 관리 (U-34~U-62)
+
+| ID | 항목 | 자동 조치 |
+|----|------|-----------|
+| U-34 | finger 서비스 차단 | ✔ 중지+mask |
+| U-35 | FTP/pub 디렉터리 삭제 | 선택 (vu_del_ftp_pub_dir) |
+| U-36 | r-services 차단 | ✔ 중지+mask |
+| U-37 | cron/at 접근 제어 | ✔ 파일 640, 바이너리 640 |
+| U-38 | DoS 취약 서비스 차단 | ✔ 중지+mask |
+| U-39 | NFS 차단 | ✔ 중지+mask |
+| U-40 | NFS 접근 제어 | 선택 (vu_nfs_manage_exports) |
+| U-41 | autofs 차단 | ✔ 중지+mask |
+| U-42 | rpcbind 차단 | 선택 (vu_mask_rpcbind) |
+| U-43 | NIS 차단 | ✔ 중지+mask |
+| U-44 | tftp/talk 차단 | ✔ 중지+mask |
+| U-45 | 메일 버전 노출 점검 | 리포트 |
+| U-46 | 메일 실행 차단 | ✔ 설정 |
+| U-47 | 스팸 중계 제한 | ✔ 설정 |
+| U-48 | EXPN/VRFY 제한 | ✔ 설정 |
+| U-49 | DNS 버전 노출 점검 | 리포트 |
+| U-50 | DNS 존 전송 제한 | ✔ 설정 |
+| U-51 | DNS 동적 업데이트 차단 | ✔ 설정 |
+| U-52 | telnet 차단 | ✔ 중지+mask |
+| U-53 | FTP 정보 숨김 | ✔ 설정 |
+| U-54 | cleartext FTP 차단 | ✔ mask |
+| U-55 | FTP 계정 셸 제한 | ✔ nologin |
+| U-56 | FTP 접근 제어 | ✔ 설정 |
+| U-57 | /etc/ftpusers 설정 | ✔ 설정 |
+| U-58 | SNMP 데몬 차단 | ✔ 중지+mask |
+| U-59 | SNMPv3 사용 권고 | 리포트 |
+| U-60 | SNMP 커뮤니티 문자열 | ✔ 프로브 리포트 |
+| U-61 | SNMP 접근 제어 | ✔ 설정 |
+| U-62 | MOTD 경고 메시지 | ✔ 설정 |
+
+### 4장~5장: 생명주기 관리 (U-63~U-67)
+
+| ID | 항목 | 자동 조치 |
+|----|------|-----------|
+| U-63 | sudoers.d 권한 관리 | ✔ 0440 |
+| U-64 | 자동 보안 패치 | ✔ dnf-automatic/unattended-upgrades |
+| U-65 | 시간 동기화 (chrony) | ✔ chronyd |
+| U-66 | 로깅 설정 | ✔ syslog |
+| U-67 | /var/log 하위 권한 | ✔ 0640 |
 
 ---
 
@@ -139,7 +261,7 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 | `cat.services` | 서비스 관리 (U-34~62) | `-t cat.services` |
 | `cat.lifecycle` | 생명주기 관리 (U-63~67) | `-t cat.lifecycle` |
 
-### 태스트 이름 접두사
+### 태스크 이름 접두사
 
 - `[U-XX]` — 자동 집행 또는 측정 가능한 태스크
 - `[U-XX:M]` — **수동 확인 필요**. 기계로는 판단할 수 없어 리포트에서 INFO로 분류됩니다
@@ -187,18 +309,11 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 | `vu_backups_root` | `/opt/backups/kisa_hardening` | 설정 파일 백업 위치 |
 | `vu_tmout_sec` | `600` | 유휴 세션 타임아웃(초) — U-12 |
 | `vu_umask` | `027` | 기본 UMASK — U-30 |
-| `vu_encryption_method` | `SHA512` | 신규 계정 해시 알고리즘 — U-13 |
+| `vu_encryption_method` | `yescrypt` | 신규 계정 해시 알고리즘 — U-13 |
 | `vu_pw_minlen` | `12` | 비밀번호 최소 길이 — U-02 |
 | `vu_login_maxfails` | `5` | 로그인 실패 제한 횟수 — U-03 |
 | `vu_login_unlock_time` | `900` | 잠금 해제 대기 시간(초) — U-03 |
-
----
-
-## 점검 항목 카테고리
-
-| 카테고리 | U-ID 범위 | 점검 영역 |
-|----------|-----------|-----------|
-| 계정 관리 | U-01 ~ U-13 | root 원격로그인, 비밀번호 정책, UID 중복, 유휴 세션 등 |
-| 파일·디렉터리 관리 | U-14 ~ U-33 | 파일 권한, SUID/SGID, dot 파일, 홈 디렉터리 등 |
-| 서비스 관리 | U-34 ~ U-62 | 불필요 서비스, FTP, NFS, SNMP, DNS 등 |
-| 생명주기 관리 | U-63 ~ U-67 | 패치 관리, 감사로그, MOTD, 재부팅 정책 등 |
+| `vu_home_dir_max_mode` | `755` | 홈 디렉터리 최대 권한 — U-31 |
+| `vu_pass_max_days` | `90` | 비밀번호 최대 유효기간(일) — U-02 |
+| `vu_trusted_suid_bins` | `['sudo']` | SUID whitelist (basename) — U-23 |
+| `vu_scan_roots` | `[/etc, /usr/bin, /usr/sbin, /sbin, /bin, /home, /opt, /srv, /var/spool, /usr/local]` | SUID/SGID 스캔 경로 — U-23 |
