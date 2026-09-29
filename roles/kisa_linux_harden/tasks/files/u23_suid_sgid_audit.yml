@@ -41,12 +41,11 @@
     u23_strip_targets: "{{ u23_suspicious_paths.stdout | from_json if u23_suspicious_paths.stdout | length > 0 else [] }}"
 
 - name: "[U-23] 화이트리스트 밖 SUID/SGID 비트 자동 제거"
-  file:
-    path: "{{ item }}"
-    mode: a-s
+  shell: "chmod a-s {{ item }}"
   loop: "{{ u23_strip_targets }}"
   when: u23_strip_targets | length > 0
   failed_when: false
+  changed_when: true
 
 # ---------- 리포트 --------------------------------------------------------------
 - name: "[U-23] 제거 대상 리포트"
@@ -54,3 +53,20 @@
     msg: >-
       SUID/SGID 제거 완료:
       {{ u23_strip_targets | default([]) | map('basename') | join(', ') | default('- 없음 (양호)') }}
+
+# ---------- 검증 ----------------------------------------------------------------
+- name: "[U-23:verify] SUID/SGID 제거 검증"
+  shell: >-
+    find {{ vu_scan_roots | join(' ') }} -xdev -type f
+    \( -perm -4000 -o -perm -2000 \) -user root -printf '%h/%f\n' 2>/dev/null
+  register: u23_verify_raw
+  changed_when: false
+  failed_when: false
+  when: u23_strip_targets | length > 0
+
+- name: "[U-23:verify] 검증 결과 리포트"
+  debug:
+    msg: >-
+      SUID/SGID 검증 완료:
+      {{ u23_verify_raw.stdout_lines | default([]) | map('basename') | list | difference(vu_trusted_suid_bins) | join(', ') | default('- 모두 제거됨 (양호)') }}
+  when: u23_strip_targets | length > 0
