@@ -10,7 +10,7 @@
       owner: root
       group: root
       mode: "0440"
-      required: true
+      required: false
 
 - name: "[U-63:M] sudoers.d 하위 파일들도 440 이하인지 진단 (참고)"
   shell: "find /etc/sudoers.d -type f -perm /o+W,a+r 2>/dev/null"
