@@ -18,7 +18,7 @@
   shell: |
     python3 -c "
     import json, os
-    trusted = {{ vu_trusted_suid_bins | default([]) | to_json }}
+    trusted = {{ vu_trusted_suid_bins | default([]) | to_json | replace('"', "'") }}
     raw = '''{{ u23_raw.stdout_lines | default([]) | to_json }}'''.strip()
     if raw:
         paths = json.loads(raw)
