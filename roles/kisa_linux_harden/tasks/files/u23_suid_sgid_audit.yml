@@ -14,38 +14,24 @@
   changed_when: false
   failed_when: false
 
+# ---------- 순수 Jinja2로 화이트리스트 밖 대상 추출 (shell quoting 문제 제거) ---
 - name: "[U-23] 화이트리스트 밖 대상 경로 추출"
-  shell: |
-    python3 -c "
-    import json, os
-    trusted = {{ vu_trusted_suid_bins | default([]) | to_json | replace('"', "'") }}
-    raw = '''{{ u23_raw.stdout_lines | default([]) | to_json }}'''.strip()
-    if raw:
-        paths = json.loads(raw)
-    else:
-        paths = []
-    suspicious = []
-    for p in paths:
-        bn = os.path.basename(p)
-        if bn not in trusted:
-            suspicious.append(p)
-    print(json.dumps(suspicious))
-    "
-  register: u23_suspicious_paths
-  changed_when: false
-  failed_when: false
+  set_fact:
+    u23_strip_targets: "{{ __suspicious }}"
+  vars:
+    __scan_results: "{{ u23_raw.stdout_lines | default([]) }}"
+    __trusted: "{{ vu_trusted_suid_bins | default([]) }}"
+    __suspicious: |
+      {% set ns = namespace(result=[]) %}
+      {% for p in __scan_results %}
+        {% set bn = p | basename %}
+        {% if bn not in __trusted %}
+          {% set ns.result = ns.result + [p] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.result }}
 
 # ---------- 화이트리스트 밖 SUID/SGID 비트 제거 ---------------------------------
-- name: "[U-23] SUID/SGID 제거 대상 변수 설정"
-  set_fact:
-    u23_strip_targets: "{{ u23_suspicious_paths.stdout | from_json }}"
-  when: u23_suspicious_paths.stdout is defined and u23_suspicious_paths.stdout | length > 0
-
-- name: "[U-23] SUID/SGID 제거 대상 변수 초기화 (스캔 대상 없음)"
-  set_fact:
-    u23_strip_targets: []
-  when: u23_suspicious_paths.stdout is not defined or u23_suspicious_paths.stdout | length == 0
-
 - name: "[U-23] 화이트리스트 밖 SUID/SGID 비트 자동 제거"
   shell: "chmod a-s {{ item }}"
   loop: "{{ u23_strip_targets }}"
