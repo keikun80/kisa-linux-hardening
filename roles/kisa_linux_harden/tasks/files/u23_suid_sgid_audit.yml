@@ -17,7 +17,7 @@
 # ---------- 순수 Jinja2로 화이트리스트 밖 대상 추출 (shell quoting 문제 제거) ---
 - name: "[U-23] 화이트리스트 밖 대상 경로 추출"
   set_fact:
-    u23_strip_targets: "{{ __suspicious }}"
+    u23_strip_targets: "{{ __suspicious | from_yaml }}"
   vars:
     __scan_results: "{{ u23_raw.stdout_lines | default([]) }}"
     __trusted: "{{ vu_trusted_suid_bins | default([]) }}"
