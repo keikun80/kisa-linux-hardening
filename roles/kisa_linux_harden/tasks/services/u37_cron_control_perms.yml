@@ -17,7 +17,7 @@
 # ---------- cron/at 바이너리 권한 640 ------------------------------------------
 - name: "[U-37] cron/at 바이너리 권한 640으로 변경"
   file:
-    path: "{{ item.path }}"
+    path: "{{ item }}"
     owner: root
     group: root
     mode: "0640"
