@@ -82,7 +82,6 @@ vu_known_hidden_under_etc: []
 #       sudo, ksu 만 유지. 나머지는 자동 제거
 vu_trusted_suid_bins:
   - sudo
-  - ksu
 # 고위험: U-25 world-writable 비트 자동 제거 (기본은 보고만)
 vu_strip_world_writable: false
 # U-56/U-57: FTP 거부 목록에 추가할 계정 (기본값은 시스템 계정 목록이 포함됨)
