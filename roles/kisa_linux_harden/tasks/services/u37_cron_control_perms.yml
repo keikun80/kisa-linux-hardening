@@ -14,17 +14,17 @@
       mode: "0640"
       required: false
 
-# ---------- cron/at 바이너리 권한 750 ------------------------------------------
-- name: "[U-37] cron/at 바이너리 권한 750으로 변경"
+# ---------- cron/at 바이너리 권한 640 ------------------------------------------
+- name: "[U-37] cron/at 바이너리 권한 640으로 변경"
   file:
     path: "{{ item.path }}"
     owner: root
     group: root
-    mode: "{{ item.mode }}"
+    mode: "0640"
   loop:
-    - { path: "/usr/bin/at",       mode: "0750" }
-    - { path: "/usr/bin/atq",      mode: "0750" }
-    - { path: "/usr/bin/atrm",     mode: "0750" }
-    - { path: "/usr/bin/batch",    mode: "0750" }
-    - { path: "/usr/bin/crontab",  mode: "0750" }
+    - /usr/bin/at
+    - /usr/bin/atq
+    - /usr/bin/atrm
+    - /usr/bin/batch
+    - /usr/bin/crontab
   failed_when: false
