@@ -1,6 +1,6 @@
 # =============================================================================
 # U-03 계정 잠금 임계값 설정 (brute-force 방어)
-# 판단 기준: pam_faillock(tally2) deny<=10 (가이드: 5 권장)
+# 판단 기준: pam_faillock deny<=10 (가이드: 5 권장)
 # 자동 조치: vu_pam_strict_stack=true 일 때 PAM 스택에 faillock 주입
 #   ⚠ ssh 로그인 경로에 영향을 주는 변경. 반드시 테스트 후 확대 시행.
 # =============================================================================
@@ -17,7 +17,7 @@
     - vu_pam_strict_stack | bool
     - ansible_pkg_mgr in ['yum', 'dnf']
 
-# ---------- RHEL 계열: system-auth / password-auth (faillock + pam_tally2) -----
+# ---------- RHEL 계열: system-auth / password-auth (faillock) -----
 - name: "[U-03] faillock 라인 상향 (RHEL 계열)"
   lineinfile:
     path: "{{ item.file }}"
@@ -33,23 +33,6 @@
     - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
     - { file: /etc/pam.d/system-auth,    regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
     - { file: /etc/pam.d/password-auth,  regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
-  loop_control:
-    label: "{{ item.file }} :: {{ item.line[:48] }}"
-  when:
-    - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
-    - ((u03_pam_files.results | selectattr('item', 'equalto', item.file)) | first).stat.exists | default(false)
-
-# ---------- RHEL 계열: pam_tally2 (legacy fallback) ---------------------------
-- name: "[U-03] pam_tally2 설정 추가 (RHEL 계열, legacy fallback)"
-  lineinfile:
-    path: "{{ item.file }}"
-    regexp: "^{{ item.regexp_prefix }}"
-    line: "{{ item.line }}"
-    insertbefore: "{{ item.insertbefore | default(omit) }}"
-  loop:
-    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_tally2",          line: "auth required pam_tally2.so deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} onerr=fail", insertbefore: "^auth.*pam_unix" }
-    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_tally2",          line: "auth required pam_tally2.so deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} onerr=fail", insertbefore: "^auth.*pam_unix" }
   loop_control:
     label: "{{ item.file }} :: {{ item.line[:48] }}"
   when:
