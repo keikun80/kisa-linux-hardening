@@ -19,7 +19,7 @@
     backup: false
 
 # ---------- 방화벽 (높은 리스크 — 토클로만) ------------------------------------
-- name: "[U-28] 방화벽 개방_CIDR 검증 (토클 ON 전 체크)"
+- name: "[U-28] 방화벽 개방_CIDR 검증 (토글로 적용: vu_manage_host_firewall: true/false)"
   fail:
     msg: >-
       vu_manage_host_firewall=true 이지만 vu_firewall_allow_sources 가 비어 있습니다.
@@ -84,7 +84,7 @@
     - vu_manage_host_firewall | bool
     - ansible_pkg_mgr not in ['yum', 'dnf']
 
-- name: "[U-28:M] 방화벽 관련 지침 (토클 OFF 시)"
+- name: "[U-28:M] 방화벽 관련 지침 (토글 false 시)"
   debug:
     msg: |
       방화벽 자동화가 꺼져 있습니다. EC2에서는 Security Group이 접근을
