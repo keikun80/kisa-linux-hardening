@@ -10,6 +10,9 @@
   - 인벤토리(`inventory/ec2.ini`, `ec2.example.ini`)의 `ubuntu`를 `ubuntu22` 및 `ubuntu24`로 분리
   - `scripts/audit.sh` 및 `plays/site.yml`의 `DISTRO` 선택 목록에 `ubuntu22`, `ubuntu24` 추가
   - `_selftest/ubuntu.example.ini`: 로컬 컨테이너/VM 테스트용 인벤토리 예시 추가
+  - `Vagrantfile`: Ubuntu 22.04 LTS 및 24.04 LTS 멀티 VM 테스트 환경 구성
+  - `inventory/vagrant.ini`: Vagrant 전용 Ansible 인벤토리 추가
+  - `scripts/vagrant_test.sh`: Vagrant 기동부터 감사/적용까지 원클릭 래퍼 스크립트 제공
 
 ### Changed & Fixed
 

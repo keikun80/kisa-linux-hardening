@@ -33,6 +33,7 @@
   command: id -un
   register: vu_prep_uid
   changed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] 루트 권한 사전조건 확인"
@@ -68,6 +69,7 @@
   register: vu_users_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_users 팩트 등록 (JSON → dict)"
@@ -97,6 +99,7 @@
   register: vu_md5_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_md5_users 팩트 등록"
@@ -125,6 +128,7 @@
   register: vu_wheel_gid_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_wheel_gid 팩트 등록"

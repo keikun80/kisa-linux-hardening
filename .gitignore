@@ -17,3 +17,7 @@ _archive_*.tgz
 
 # Git Worktrees
 .worktrees/
+
+# Vagrant
+.vagrant/
+

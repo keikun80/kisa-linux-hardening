@@ -77,6 +77,23 @@ ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023 --d
 ansible-playbook -i _selftest/local.ini plays/site.yml --check
 ```
 
+### ④ Vagrant VM 테스트 (Ubuntu 22 / 24)
+
+실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증합니다.
+
+```bash
+# Ubuntu 22 / 24 가상머신 기동 및 자동 감사
+bash scripts/vagrant_test.sh
+
+# 특정 배포판만 기동 및 감사
+DISTRO=ubuntu22 bash scripts/vagrant_test.sh
+DISTRO=ubuntu24 bash scripts/vagrant_test.sh
+
+# 변경 사항 실제 적용 (미리보기 diff)
+ACTION=apply DISTRO=ubuntu22 bash scripts/vagrant_test.sh
+```
+
+
 ---
 
 ## 프로젝트 구조
