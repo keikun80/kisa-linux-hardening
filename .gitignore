@@ -14,3 +14,6 @@ _archive_*.tgz
 # IDE
 .vscode/
 .idea/
+
+# Git Worktrees
+.worktrees/
