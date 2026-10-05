@@ -3,21 +3,28 @@
 # =============================================================================
 ---
 # 각 대상 호스트의 SSH Host Key를 컨트롤 노드의 known_hosts에 등록
-- name: Scan and add SSH host keys to localhost known_hosts
-  ansible.builtin.known_hosts:
-    name: "{{ item.name }}"
-    key: "{{ lookup('pipe', 'ssh-keyscan -T 5 -t ed25519,ecdsa,rsa -H ' + item.target) }}"
-    path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
-    state: present
-  loop:
-    - name: "{{ ansible_host | default(inventory_hostname) }}"
-      target: "{{ ansible_host | default(inventory_hostname) }}"
-    - name: "{{ inventory_hostname }}"
-      target: "{{ inventory_hostname }}"
+- name: "[PREP] 대상 호스트 SSH 키 스캔"
+  command: "ssh-keyscan -T 5 -p {{ ansible_port | default(22) }} -t ed25519,ecdsa,rsa -H {{ ansible_host | default(inventory_hostname) }}"
+  register: _scanned_keys
+  changed_when: false
+  failed_when: false
+  check_mode: false
   delegate_to: localhost
   connection: local
-  run_once: false
-  when: item.target is defined and item.target | length > 0
+  become: false
+
+- name: "[PREP] 스캔된 SSH 키를 localhost known_hosts에 등록"
+  ansible.builtin.known_hosts:
+    name: "{{ ansible_host | default(inventory_hostname) }}"
+    key: "{{ item }}"
+    path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
+    state: present
+  loop: "{{ _scanned_keys.stdout_lines | default([]) }}"
+  when: _scanned_keys.stdout_lines is defined and _scanned_keys.stdout_lines | length > 0
+  delegate_to: localhost
+  connection: local
+  become: false
+  failed_when: false
 
 # 환경의 gathered_subset=minimal 류 트리밍(기업 템플릿/환경변수)을 받지 않기 위해,
 # 핵심 팩트가 빠져 있으면 여기서 전체 수집(setup filter=*)을 한 번 더 강제한다.

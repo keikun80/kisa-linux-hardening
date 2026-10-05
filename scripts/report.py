@@ -56,7 +56,7 @@ class Cell:
         self.msgs = []
 
     def feed(self, ev):
-        rank = VERB_ORDER.get(ev, 0)
+        rank = VERB_ORDER.get(ev.get("ev"), 0)
         self.best = max(self.best, rank)
         item = ev.get("item")
         if item and len(self.details) < 8:
@@ -121,7 +121,7 @@ def main(argv=None):
             return int(i.split("-")[1])
         except Exception:
             return 999
-    ids_sorted = sorted(sorted(all_ids), key=idnum)
+    ids_sorted = sorted(set(all_ids), key=idnum)
 
     os.makedirs(args.outdir, exist_ok=True)
 

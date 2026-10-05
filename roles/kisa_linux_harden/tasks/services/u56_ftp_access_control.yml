@@ -5,6 +5,23 @@
 #   → 표준 두 경로(/etc/vsftpd/ftpusers, /etc/ftpusers) 모두 배포
 # =============================================================================
 
+- name: "[U-56] vsftpd 설정 파일 존재 확인"
+  stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/vsftpd/vsftpd.conf
+    - /etc/vsftpd.conf
+  register: u56_vsftpd_conf_stat
+
+- name: "[U-56] 존재하는 vsftpd 설정 파일 선택"
+  set_fact:
+    u56_vsftpd_conf_path: "{{ (u56_vsftpd_conf_stat.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
+
+- name: "[U-56] /etc/vsftpd 디렉터리 상태 확인"
+  stat:
+    path: /etc/vsftpd
+  register: u56_vsftpd_dir_stat
+
 - name: "[U-56] Ftpusers 블랙리스트 배치 (vsftpd 설치 시에만)"
   copy:
     dest: "{{ item }}"
@@ -18,18 +35,22 @@
           | union(vu_ftp_blocked_users | default([])))
          | unique | join('\n') }}
   loop:
-    - /etc/vsftpd/ftpusers
     - /etc/ftpusers
-  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
+    - "{{ '/etc/vsftpd/ftpusers' if (u56_vsftpd_dir_stat.stat.exists and u56_vsftpd_dir_stat.stat.isdir) else omit }}"
+  when:
+    - u56_vsftpd_conf_path != ''
+    - item != omit
 
 - name: "[U-56] VsFtpD 설정에서 Ftpusers 경로 유지 (option 검증용)"
   lineinfile:
-    path: /etc/vsftpd/vsftpd.conf
+    path: "{{ u56_vsftpd_conf_path }}"
     regexp: "^#?ftpusers"
     line: "ftpusers=/etc/vsftpd/ftpusers"
-  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
+  when:
+    - u56_vsftpd_conf_path != ''
+    - u56_vsftpd_dir_stat.stat.exists and u56_vsftpd_dir_stat.stat.isdir
 
 - name: "[U-56:M] VsFtpD 미설치 리포트"
   debug:
     msg: "VsFtpD 미설치 — FTP 접근 제어는 해당 없음"
-  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0
+  when: u56_vsftpd_conf_path == ''

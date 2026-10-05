@@ -21,6 +21,7 @@
         name: rsyslog
         state: started
         enabled: true
+      ignore_errors: "{{ ansible_check_mode | bool }}"
   when: (vu_logging_service | default('rsyslog')) == 'rsyslog'
 
 - name: "[U-66] journald 서비스 확인 (journald 사용 모드 또는 rsyslog 미사용)"

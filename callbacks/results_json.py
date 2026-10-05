@@ -2,11 +2,8 @@
 KISA 감사 전용 NDJSON 콜백
 ========================
 호스트 x 태스크(태스크명에 포함된 U-XX 태그) 단위로 이벤트를 JSON 라인을
-STDOUT 에 흘려보낸다. scripts/report.py 가 이 라인을 집계하여
+STDERR 에 흘려보낸다. scripts/report.py 가 이 라인을 집계하여
 '양호 / 개선필요(변경 예정) / 오류' 테이블을 만든다.
-
-활성은 플러그인 자동탐색(현재 디렉토리의 callbacks/)으로 이뤄지며,
-설정 변경이 없다. 출력 자체는 표준 화면 출력을 방해하지 않는다.
 """
 
 from __future__ import annotations
@@ -15,13 +12,46 @@ import json
 import re
 import sys
 
-from ansible.plugins.callback import Base
+from ansible.plugins.callback import CallbackBase
 from ansible.release import __version__
+
+
+def _res_dict(result):
+    if hasattr(result, "_result") and isinstance(result._result, dict):
+        return result._result
+    if isinstance(result, dict):
+        return result
+    return {}
+
+
+def _task_name(result):
+    if hasattr(result, "task_name") and result.task_name:
+        return str(result.task_name)
+    if hasattr(result, "_task") and result._task:
+        task = result._task
+        return task.get_name() if hasattr(task, "get_name") else str(getattr(task, "name", "?"))
+    res_d = _res_dict(result)
+    task = res_d.get("_task")
+    if task:
+        return task.get_name() if hasattr(task, "get_name") else str(getattr(task, "name", "?"))
+    return "?"
+
+
+def _host_name(result):
+    if hasattr(result, "_host") and result._host:
+        host = result._host
+        return host.get_name() if hasattr(host, "get_name") else str(getattr(host, "name", str(host)))
+    res_d = _res_dict(result)
+    host = res_d.get("_host")
+    if host:
+        return host.get_name() if hasattr(host, "get_name") else str(getattr(host, "name", str(host)))
+    return "?"
 
 
 def _item_name(result):
     """루프 이벤트의 item 을 짧은 문자열로 압축."""
-    it = result.get("item")
+    res_d = _res_dict(result)
+    it = res_d.get("item")
     if it is None:
         return None
     if isinstance(it, str):
@@ -31,21 +61,21 @@ def _item_name(result):
         for k in ("path", "name", "item", "key", "dest"):
             if k in it:
                 v = it[k]
-                return (str(v)[:200])
+                return str(v)[:200]
         # dict 전체를 짧게 jsondump
         s = json.dumps(it, ensure_ascii=False, default=str)
         return s if len(s) <= 200 else s[:197] + "..."
     return str(it)[:200]
 
 
-class CallbackModule(Base):
+class CallbackModule(CallbackBase):
     CALLBACK_VERSION = 2.0
     NAME = "results_json"
     CALLBACK_NEEDS_WHATEVER = True
 
     def __init__(self):
         super().__init__()
-        self.fd = sys.stderr  # STDERR 로 흘리면 ANSI 색상이 섞이는 STDOUT 로부터 격리
+        self.fd = sys.stderr
 
     # ---- play level ---------------------------------------------------------
     def v2_playbook_on_start(self, playbook):
@@ -57,50 +87,50 @@ class CallbackModule(Base):
     @staticmethod
     def _norm_stats(stats):
         out = {}
-        for host, st in getattr(stats, "process", {}).items():
-            out[host] = {
-                "ok": st.ok,
-                "changed": st.changed,
-                "failures": st.failures,
-                "skipped": st.skipped,
-            }
+        processed = getattr(stats, "processed", {})
+        for host in processed.keys():
+            if hasattr(stats, "summarize"):
+                out[str(host)] = stats.summarize(host)
+            else:
+                out[str(host)] = {}
         return out
 
     # ---- runner level -------------------------------------------------------
     def _event(self, ev, result, extra=None):
+        res_d = _res_dict(result)
         payload = {
             "ev": ev,
-            "task": result.get("_task").get("name") if result.get("_task") else "?",
-            "host": result.get("_host"),
+            "task": _task_name(result),
+            "host": _host_name(result),
         }
-        if result.get("changed"):
+        if res_d.get("changed"):
             payload["changed"] = True
-        if "msg" in result:
-            payload["msg"] = str(result["msg"])[:300]
+        if "msg" in res_d:
+            payload["msg"] = str(res_d["msg"])[:300]
         if extra:
             payload.update(extra)
         self._emit(payload)
 
-    def v2_runner_on_ok(self, result):
+    def v2_runner_on_ok(self, result, *args, **kwargs):
         self._event("ok", result, {"item": _item_name(result)})
 
-    def v2_runner_on_failed(self, result):
+    def v2_runner_on_failed(self, result, *args, **kwargs):
         self._event("failed", result, {"item": _item_name(result)})
 
-    def v2_runner_on_skipped(self, result):
+    def v2_runner_on_skipped(self, result, *args, **kwargs):
         self._event("skipped", result)
 
-    def v2_runner_item_on_ok(self, result):
+    def v2_runner_item_on_ok(self, result, *args, **kwargs):
         self._event("item_ok", result, {"item": _item_name(result)})
 
-    def v2_runner_item_on_failed(self, result):
+    def v2_runner_item_on_failed(self, result, *args, **kwargs):
         self._event("item_failed", result, {"item": _item_name(result)})
 
     # changed 계열 (핵심: 이 이벤트가 곧 '개선 예정' 신호)
-    def v2_runner_on_changed(self, result):
+    def v2_runner_on_changed(self, result, *args, **kwargs):
         self._event("changed", result, {"item": _item_name(result)})
 
-    def v2_runner_item_on_changed(self, result):
+    def v2_runner_item_on_changed(self, result, *args, **kwargs):
         self._event("item_changed", result, {"item": _item_name(result)})
 
     # ------------------------------------------------------------------
@@ -109,7 +139,6 @@ class CallbackModule(Base):
             self.fd.write(json.dumps(obj, ensure_ascii=False, default=str) + "\n")
             self.fd.flush()
         except Exception:
-            # 콜백 실패는 메인 플로우를 죽이지 않는다
             pass
 
 
