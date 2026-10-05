@@ -19,6 +19,13 @@
 - **00_prep.yml**:
   - `vu_wheel_gid`: `wheel` 그룹뿐만 아니라 Ubuntu의 `sudo` 관리자 그룹 GID 자동 조회 지원
   - `vu_sshd_unit_exists`: `sshd.service`뿐만 아니라 `ssh.service`, `ssh.socket` 유닛 자동 감지 및 서비스명 확정 로직 추가
+  - Debian/Ubuntu 계열의 apt 패키지 캐시 최신화(`apt: update_cache=yes cache_valid_time=3600`) 추가 (U-65 chrony 404 방지)
+- **U-28**:
+  - `/etc/hosts.deny`에 `ALL: ALL` 설정 전 `/etc/hosts.allow`에 SSH 허용 규칙(`sshd: ALL`)을 먼저 보장하여 TCP Wrappers 기반 SSH 접속 차단 방지 (`vu_manage_tcp_wrappers`, `vu_hosts_allow_entries`)
+- **U-67**:
+  - `/var/log` 디렉토리 권한을 `0640`에서 `0755`로 수정 (디렉터리 실행 비트 박탈로 인한 OpenSSH 세션 비정상 종료 방지)
+- **Ubuntu PAM & 계정**:
+  - Ubuntu 계열 `vu_pam_strict_stack: false` 기본화 (pam-auth-update 충돌 방지) 및 `vu_wheel_users`에 `vagrant` 추가
 - **handlers/main.yml**:
   - SSH 리로드 시 `vu_sshd_service_name` 동적 반영 및 systemd socket activation 환경을 위한 fallback 로직 추가
 - **U-02**:
