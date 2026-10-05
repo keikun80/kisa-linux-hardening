@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 # =============================================================================
-# KISA Linux Hardening — Ubuntu 22 / 24 Vagrant Test Environment
+# KISA Linux Hardening — AL2023 / Ubuntu 22 / 24 Vagrant Test Environment
 # =============================================================================
 
 Vagrant.configure("2") do |config|
@@ -26,6 +26,38 @@ Vagrant.configure("2") do |config|
   config.vm.provider "libvirt" do |lv|
     lv.memory = 1024
     lv.cpus = 1
+  end
+
+  # ---------------------------------------------------------------------------
+  # Amazon Linux 2023
+  # ---------------------------------------------------------------------------
+  config.vm.define "al2023" do |al|
+    al.vm.box = "bento/amazonlinux-2023"
+    al.vm.hostname = "kisa-al2023"
+    al.vm.network "private_network", ip: "192.168.56.23"
+    al.vm.network "forwarded_port", guest: 22, host: 2223, id: "ssh", auto_correct: true
+
+    al.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # ec2-user 사용자 및 sudo/wheel 설정
+      id -u ec2-user >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ec2-user
+      echo 'ec2-user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ec2-user
+      chmod 0440 /etc/sudoers.d/ec2-user
+      # vagrant ssh 키를 ec2-user 계정에도 배포
+      mkdir -p /home/ec2-user/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/ec2-user/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ec2-user/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ec2-user/.ssh/authorized_keys -o /home/ec2-user/.ssh/authorized_keys
+      fi
+      chown -R ec2-user:ec2-user /home/ec2-user/.ssh
+      chmod 700 /home/ec2-user/.ssh
+      chmod 600 /home/ec2-user/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
   end
 
   # ---------------------------------------------------------------------------
