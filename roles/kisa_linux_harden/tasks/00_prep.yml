@@ -104,18 +104,20 @@
     vu_md5_users: "{{ vu_md5_raw.stdout | from_json }}"
   tags: [always]
 
-# vu_wheel_gid: wheel 그룹 GID (없으면 null)
-- name: "[PREP] wheel GID 조회 (U-06 su 제한)"
+# vu_wheel_gid: 관리자 그룹(wheel 또는 vu_su_wheel_group) GID (없으면 null)
+- name: "[PREP] 관리자 그룹 GID 조회 (U-06 su 제한)"
   shell: |
     python3 -c "
     import json
+    target_group = '{{ vu_su_wheel_group | default('wheel') }}'
     gid = None
     try:
         with open('/etc/group') as f:
             for line in f:
-                if line.startswith('wheel:'):
+                if line.startswith(f'{target_group}:'):
                     parts = line.split(':')
                     gid = int(parts[2])
+                    break
     except (FileNotFoundError, PermissionError):
         pass
     print(json.dumps(gid))
@@ -139,19 +141,37 @@
     mode: "0750"
   tags: [always]
 
-- name: "[PREP] sshd 유닛 존재 여부 확인"
+- name: "[PREP] ssh/sshd 유닛 존재 여부 확인"
   stat:
     path: "{{ item }}"
-  register: vu_sshd_stat
   loop:
     - /etc/systemd/system/sshd.service
     - /usr/lib/systemd/system/sshd.service
     - /lib/systemd/system/sshd.service
+    - /etc/systemd/system/ssh.service
+    - /usr/lib/systemd/system/ssh.service
+    - /lib/systemd/system/ssh.service
+    - /etc/systemd/system/ssh.socket
+    - /usr/lib/systemd/system/ssh.socket
+    - /lib/systemd/system/ssh.socket
+  register: vu_sshd_stat
   tags: [always]
 
-- name: "[PREP] vu_sshd_unit_exists 팩트 계산"
+- name: "[PREP] vu_sshd_unit_exists 및 서비스명 팩트 계산"
   set_fact:
     vu_sshd_unit_exists: "{{ vu_sshd_stat.results | selectattr('stat.exists') | list | length > 0 }}"
+    vu_sshd_service_detected: >-
+      {{
+        'ssh' if ((vu_sshd_stat.results | selectattr('item', 'search', 'ssh\.(service|socket)') | selectattr('stat.exists') | list | length) > 0)
+        else 'sshd'
+      }}
+    vu_sshd_socket_exists: >-
+      {{ ((vu_sshd_stat.results | selectattr('item', 'search', 'ssh\.socket') | selectattr('stat.exists') | list | length) > 0) }}
+  tags: [always]
+
+- name: "[PREP] vu_sshd_service_name 확정"
+  set_fact:
+    vu_sshd_service_name: "{{ vu_sshd_service_name | default(vu_sshd_service_detected) }}"
   tags: [always]
 
 - name: "[PREP] 활성 고위험 토글 집계"

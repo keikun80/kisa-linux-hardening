@@ -28,12 +28,12 @@ mkdir -p "${DIR}"
 
 ARGS=("${@}")
 
-# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu (미설정 = 전체 인벤토리)
+# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu22 | ubuntu24 (미설정 = 전체 인벤토리)
 DISTRO="${DISTRO:-}"
 if [ -n "${DISTRO}" ]; then
   case "${DISTRO}" in
-    al2023|fedora|ubuntu) ;;
-    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu (미설정은 전체)"; exit 2;;
+    al2023|fedora|ubuntu22|ubuntu24) ;;
+    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu22, ubuntu24 (미설정은 전체)"; exit 2;;
   esac
   if ! grep -qE "^[[:space:]]*\[${DISTRO}\]" "${INV}" 2>/dev/null; then
     echo "[audit] 인벤토리 ${INV} 에 '${DISTRO}' 그룹이 없습니다"

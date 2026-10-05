@@ -26,7 +26,8 @@
 |--------|--------|-------------|
 | Amazon Linux 2023 | `al2023` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Fedora | `fedora` | dnf-automatic, chronyd, PAM 스택 자동구성 |
-| Ubuntu | `ubuntu` | unattended-upgrades, chrony, PAM 스택 수동모드 |
+| Ubuntu 22.04 LTS | `ubuntu22` | unattended-upgrades, chrony, rsyslog, ssh.service |
+| Ubuntu 24.04 LTS | `ubuntu24` | unattended-upgrades, chrony, journald, ssh.socket 대응 |
 
 배포판별 패키지명, PAM 설정, 시스템 서비스 등의 차이는 `group_vars/<그룹>/`에서 자동 적용됩니다.
 
@@ -42,8 +43,9 @@
 # 전체 인벤토리 전수 감사
 bash scripts/audit.sh
 
-# 특정 배포그룹만
-DISTRO=ubuntu bash scripts/audit.sh
+# 특정 배포그룹만 (al2023 / fedora / ubuntu22 / ubuntu24)
+DISTRO=ubuntu22 bash scripts/audit.sh
+DISTRO=ubuntu24 bash scripts/audit.sh
 
 # 단일 점검 항목만
 bash scripts/audit.sh -t u-65

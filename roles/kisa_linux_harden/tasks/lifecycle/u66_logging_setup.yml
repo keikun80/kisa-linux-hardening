@@ -9,7 +9,7 @@
     path: /usr/sbin/rsyslogd
   register: u66_rsyslogd
 
-- name: "[U-66] rsyslog 패키지 설치 및 서비스 활성화"
+- name: "[U-66] rsyslog 패키지 설치 및 서비스 활성화 (rsyslog 사용 모드)"
   block:
     - name: "[U-66] rsyslog 패키지 설치"
       package:
@@ -21,9 +21,9 @@
         name: rsyslog
         state: started
         enabled: true
-  when: u66_rsyslogd.stat.exists | default(false)
+  when: (vu_logging_service | default('rsyslog')) == 'rsyslog'
 
-- name: "[U-66] journald 서비스 확인 (rsyslog 없을 때)"
+- name: "[U-66] journald 서비스 확인 (journald 사용 모드 또는 rsyslog 미사용)"
   block:
     - name: "[U-66] systemd-journald 서비스 활성화"
       systemd:
@@ -34,12 +34,12 @@
     - name: "[U-66:M] journald 로그 설정 진단"
       debug:
         msg: |
-        rsyslog 미설치 → systemd-journald 사용 중
-        저장 정책 확인:
-          journalctl --verify
-          /etc/systemd/journald.conf (Storage=persistent?)
-          /var/log/journal/ 디렉터리 존재 여부
-  when: not (u66_rsyslogd.stat.exists | default(false))
+          systemd-journald 로깅 사용 중
+          저장 정책 확인:
+            journalctl --verify
+            /etc/systemd/journald.conf (Storage=persistent 권장)
+            /var/log/journal/ 디렉터리 존재 여부
+  when: (vu_logging_service | default('rsyslog')) == 'journald'
 
 - name: "[U-66:M] 로그 저장소 정책 진단 (auditd 등 — 사람 확인)"
   debug:
