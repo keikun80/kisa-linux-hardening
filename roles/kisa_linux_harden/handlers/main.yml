@@ -1,6 +1,8 @@
 ---
 - name: "reload sshd (sshd_config 반영)"
-  systemd:
-    name: sshd
+  service:
+    name: "{{ vu_sshd_service_name | default('sshd') }}"
     state: reloaded
-  when: vu_sshd_unit_exists
+  when: vu_sshd_unit_exists | default(false)
+  ignore_errors: true
+

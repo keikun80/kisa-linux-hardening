@@ -20,3 +20,4 @@
   assert:
     that: u62_stat.stat.exists and (u62_stat.stat.size | int) > 0
     fail_msg: "/etc/motd 가 비어 있음"
+  when: not ansible_check_mode

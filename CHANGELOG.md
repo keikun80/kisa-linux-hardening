@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## v1.1.0 (2026-10-05)
+
+### Added
+
+- **Ubuntu 22.04 LTS 및 Ubuntu 24.04 LTS 전용 프로파일 이분화**:
+  - `group_vars/ubuntu22/main.yml`: Ubuntu 22.04 LTS 프로파일 (`ssh.service`, `rsyslog`, SUID 화이트리스트 등)
+  - `group_vars/ubuntu24/main.yml`: Ubuntu 24.04 LTS 프로파일 (`ssh.socket` 대응, `journald` 중심 로깅 등)
+  - 인벤토리(`inventory/ec2.ini`, `ec2.example.ini`)의 `ubuntu`를 `ubuntu22` 및 `ubuntu24`로 분리
+  - `scripts/audit.sh` 및 `plays/site.yml`의 `DISTRO` 선택 목록에 `ubuntu22`, `ubuntu24` 추가
+  - `_selftest/ubuntu.example.ini`: 로컬 컨테이너/VM 테스트용 인벤토리 예시 추가
+  - `Vagrantfile`: Ubuntu 22.04 LTS 및 24.04 LTS 멀티 VM 테스트 환경 구성
+  - `inventory/vagrant.ini`: Vagrant 전용 Ansible 인벤토리 추가
+  - `scripts/vagrant_test.sh`: Vagrant 기동부터 감사/적용까지 원클릭 래퍼 스크립트 제공
+
+### Changed & Fixed
+
+- **00_prep.yml**:
+  - `vu_wheel_gid`: `wheel` 그룹뿐만 아니라 Ubuntu의 `sudo` 관리자 그룹 GID 자동 조회 지원
+  - `vu_sshd_unit_exists`: `sshd.service`뿐만 아니라 `ssh.service`, `ssh.socket` 유닛 자동 감지 및 서비스명 확정 로직 추가
+- **handlers/main.yml**:
+  - SSH 리로드 시 `vu_sshd_service_name` 동적 반영 및 systemd socket activation 환경을 위한 fallback 로직 추가
+- **U-02**:
+  - `file_stat` 미정의 오류 방지를 위한 정적 `stat` 검사 적용
+  - `libpam-pwquality` 패키지 및 Debian `common-password` 존재 검사 보강
+- **U-03**:
+  - Debian/Ubuntu 계열의 `common-auth` 및 `common-account` 파일 검사 및 `pam_faillock` 안전 주입
+- **U-66**:
+  - `vu_logging_service` 변수 연동 (`rsyslog` vs `journald`) 및 조건 분기 안정화
+
 ## v1.0.1 (2026-09-29)
 
 ### Fixed

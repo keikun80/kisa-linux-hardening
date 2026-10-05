@@ -3,23 +3,31 @@
 # sendmail_cf PrivicyOptions (noExpn/noVRFy) 또는 postifix disable VRFy/EXPn
 # =============================================================================
 
+- name: "[U-48] MTA 설정 파일 존재 여부 확인"
+  stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/mail/sendmail.cf
+    - /etc/postfix/main.cf
+  register: u48_mta_files
+
 - name: "[U-48] sendmail_PrivicyOptions 설정"
   lineinfile:
     path: /etc/mail/sendmail.cf
     regexp: "^O\\s+PrivicyOptions"
     line: "O PrivicyOptions(noExpn, noVRFy)"
-  when: lookup('fileglob', '/etc/mail/sendmail.cf', errors='ignore') | length > 0
+  when: ((u48_mta_files.results | selectattr('item', 'equalto', '/etc/mail/sendmail.cf')) | first).stat.exists | default(false)
 
-- name: "[U-48] postifix 에서 Expn/Vrfy 비활성화"
+- name: "[U-48] postfix 에서 Expn/Vrfy 비활성화"
   lineinfile:
     path: /etc/postfix/main.cf
     regexp: "^disableVRFy"
     line: "disableVRFy = yes"
-  when: lookup('fileglob', '/etc/postfix/main.cf', errors='ignore') | length > 0
+  when: ((u48_mta_files.results | selectattr('item', 'equalto', '/etc/postfix/main.cf')) | first).stat.exists | default(false)
 
 - name: "[U-48:M] 둘 다 MTA 설정이 없으면 해당 없음"
   debug:
     msg: "Expn/Vrfy 대상 MTA 설정 파일 없음 (양호 추정)"
   when:
-    - lookup('fileglob', '/etc/mail/sendmail.cf', errors='ignore') | length == 0
-    - lookup('fileglob', '/etc/postfix/main.cf', errors='ignore') | length == 0
+    - not (((u48_mta_files.results | selectattr('item', 'equalto', '/etc/mail/sendmail.cf')) | first).stat.exists | default(false))
+    - not (((u48_mta_files.results | selectattr('item', 'equalto', '/etc/postfix/main.cf')) | first).stat.exists | default(false))

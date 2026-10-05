@@ -4,12 +4,30 @@
 # 자동 조치: 설정이 있으면 NO 고정 + /var/ftp/pub 삭제(고위험 토클)
 # =============================================================================
 
+- name: "[U-35] vsftpd 설정 파일 존재 확인"
+  stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/vsftpd/vsftpd.conf
+    - /etc/vsftpd.conf
+  register: u35_vsftpd_conf_stat
+
+- name: "[U-35] 존재하는 vsftpd 설정 파일 선택"
+  set_fact:
+    u35_vsftpd_conf_path: "{{ (u35_vsftpd_conf_stat.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
+
 - name: "[U-35] vsftpd 익명 로그인을 NO 로 고정"
   lineinfile:
-    path: /etc/vsftpd/vsftpd.conf
+    path: "{{ u35_vsftpd_conf_path }}"
     regexp: "^#?*anonymous_enable"
     line: "anonymous_enable=NO"
-  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length > 0
+  when: u35_vsftpd_conf_path != ''
+
+- name: "[U-35] /var/ftp/pub 디렉터리 상태 확인"
+  stat:
+    path: /var/ftp/pub
+  register: u35_ftp_pub_stat
+  when: vu_del_ftp_pub_dir | bool
 
 - name: "[U-35] /var/ftp/pub 디렉터리 삭제 (토클 ON)"
   file:
@@ -17,9 +35,9 @@
     state: absent
   when:
     - vu_del_ftp_pub_dir | bool
-    - lookup('fileglob', '/var/ftp/pub', errors='ignore') | length > 0
+    - u35_ftp_pub_stat.stat is defined and u35_ftp_pub_stat.stat.exists
 
 - name: "[U-35:M] vsftpd 미설치이면 해당 없음"
   debug:
     msg: "vsftpd 설정 파일 없음 — 익명 FTP 경로가 없어 양호 추정"
-  when: lookup('fileglob', '/etc/vsftpd/vsftpd.conf', errors='ignore') | length == 0
+  when: u35_vsftpd_conf_path == ''

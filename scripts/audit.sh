@@ -26,14 +26,17 @@ RAW="${DIR}/raw.log"
 NDJSON="${DIR}/events.ndjson"
 mkdir -p "${DIR}"
 
-ARGS=("${@}")
+ARGS=()
+if [ $# -gt 0 ]; then
+  ARGS+=("$@")
+fi
 
-# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu (미설정 = 전체 인벤토리)
+# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu22 | ubuntu24 (미설정 = 전체 인벤토리)
 DISTRO="${DISTRO:-}"
 if [ -n "${DISTRO}" ]; then
   case "${DISTRO}" in
-    al2023|fedora|ubuntu) ;;
-    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu (미설정은 전체)"; exit 2;;
+    al2023|fedora|ubuntu22|ubuntu24) ;;
+    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu22, ubuntu24 (미설정은 전체)"; exit 2;;
   esac
   if ! grep -qE "^[[:space:]]*\[${DISTRO}\]" "${INV}" 2>/dev/null; then
     echo "[audit] 인벤토리 ${INV} 에 '${DISTRO}' 그룹이 없습니다"
@@ -51,14 +54,16 @@ echo "[audit] 인벤토리=${INV}${DISTRO:+ (배포그룹=${DISTRO})}"
 echo "[audit] 출력 디렉토리=${DIR}"
 echo "[audit] 시작..."
 
-# colormixin 없이 표준 출력을 로깅 + callbacks 가 뿌린 NDJSON(stderr) 를 분리
+STDERR_RAW="${DIR}/stderr.log"
 ANSIBLE_LOCALHOST_WARNING=False \
 ANSIBLE_DEPRECATION_WARNINGS=False \
 ANSIBLE_STDOUT_CALLBACK=default \
 ansible-playbook -i "${INV}" plays/site.yml --diff \
   "${ARGS[@]}" \
-  1>${RAW} 2> >(tee /dev/stderr | grep '^{.*}' > "${NDJSON}" 2>/dev/null &) || \
+  1>${RAW} 2>${STDERR_RAW} || \
   { echo "[audit] 실행 코드 $? (일부 호스트 실패 가능)"; }
+
+grep '^{.*}' "${STDERR_RAW}" > "${NDJSON}" 2>/dev/null || true
 
 python3 scripts/report.py --ndjson "${NDJSON}" --outdir "${DIR}" --title "KISA Linux 취약점 감사 ${TS}"
 CODE=$?

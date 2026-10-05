@@ -40,7 +40,18 @@
     - ansible_pkg_mgr in ['yum', 'dnf']
     - ((u03_pam_files.results | selectattr('item', 'equalto', item.file)) | first).stat.exists | default(false)
 
-# ---------- Debian 계열: common-auth ------------------------------------------
+# ---------- Debian 계열: common-auth / common-account -------------------------
+- name: "[U-03] common-auth 및 common-account 존재 여부 확인 (Debian 계열)"
+  stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/pam.d/common-auth
+    - /etc/pam.d/common-account
+  register: u03_deb_pam_files
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr not in ['yum', 'dnf']
+
 - name: "[U-03] common-auth faillock 주입 (Debian 계열)"
   lineinfile:
     path: /etc/pam.d/common-auth
@@ -51,12 +62,23 @@
   loop:
     - { re: "\\bpam_faillock\\.so preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", anchor: "^auth.*pam_unix" }
     - { re: "\\bpam_faillock\\.so authfail", line: "auth required pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", after: "^auth.*pam_unix" }
-    - { re: "^account.*\\bpam_faillock\\.so", line: "account required pam_faillock.so" }
   loop_control:
     label: "{{ item.re }}"
   when:
     - vu_pam_strict_stack | bool
     - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ((u03_deb_pam_files.results | selectattr('item', 'equalto', '/etc/pam.d/common-auth')) | first).stat.exists | default(false)
+
+- name: "[U-03] common-account faillock 주입 (Debian 계열)"
+  lineinfile:
+    path: /etc/pam.d/common-account
+    regexp: "^account.*\\bpam_faillock\\.so"
+    line: "account required pam_faillock.so"
+    insertbefore: "^account.*pam_unix"
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ((u03_deb_pam_files.results | selectattr('item', 'equalto', '/etc/pam.d/common-account')) | first).stat.exists | default(false)
 
 # ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------
 - name: "[U-03:M] 잠금 임계값 진단 (strict OFF)"

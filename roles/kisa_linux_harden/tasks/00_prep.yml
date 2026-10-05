@@ -3,21 +3,28 @@
 # =============================================================================
 ---
 # 각 대상 호스트의 SSH Host Key를 컨트롤 노드의 known_hosts에 등록
-- name: Scan and add SSH host keys to localhost known_hosts
-  ansible.builtin.known_hosts:
-    name: "{{ item.name }}"
-    key: "{{ lookup('pipe', 'ssh-keyscan -T 5 -t ed25519,ecdsa,rsa -H ' + item.target) }}"
-    path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
-    state: present
-  loop:
-    - name: "{{ ansible_host | default(inventory_hostname) }}"
-      target: "{{ ansible_host | default(inventory_hostname) }}"
-    - name: "{{ inventory_hostname }}"
-      target: "{{ inventory_hostname }}"
+- name: "[PREP] 대상 호스트 SSH 키 스캔"
+  command: "ssh-keyscan -T 5 -p {{ ansible_port | default(22) }} -t ed25519,ecdsa,rsa -H {{ ansible_host | default(inventory_hostname) }}"
+  register: _scanned_keys
+  changed_when: false
+  failed_when: false
+  check_mode: false
   delegate_to: localhost
   connection: local
-  run_once: false
-  when: item.target is defined and item.target | length > 0
+  become: false
+
+- name: "[PREP] 스캔된 SSH 키를 localhost known_hosts에 등록"
+  ansible.builtin.known_hosts:
+    name: "{{ ansible_host | default(inventory_hostname) }}"
+    key: "{{ item }}"
+    path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
+    state: present
+  loop: "{{ _scanned_keys.stdout_lines | default([]) }}"
+  when: _scanned_keys.stdout_lines is defined and _scanned_keys.stdout_lines | length > 0
+  delegate_to: localhost
+  connection: local
+  become: false
+  failed_when: false
 
 # 환경의 gathered_subset=minimal 류 트리밍(기업 템플릿/환경변수)을 받지 않기 위해,
 # 핵심 팩트가 빠져 있으면 여기서 전체 수집(setup filter=*)을 한 번 더 강제한다.
@@ -33,6 +40,7 @@
   command: id -un
   register: vu_prep_uid
   changed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] 루트 권한 사전조건 확인"
@@ -68,6 +76,7 @@
   register: vu_users_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_users 팩트 등록 (JSON → dict)"
@@ -97,6 +106,7 @@
   register: vu_md5_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_md5_users 팩트 등록"
@@ -104,18 +114,20 @@
     vu_md5_users: "{{ vu_md5_raw.stdout | from_json }}"
   tags: [always]
 
-# vu_wheel_gid: wheel 그룹 GID (없으면 null)
-- name: "[PREP] wheel GID 조회 (U-06 su 제한)"
+# vu_wheel_gid: 관리자 그룹(wheel 또는 vu_su_wheel_group) GID (없으면 null)
+- name: "[PREP] 관리자 그룹 GID 조회 (U-06 su 제한)"
   shell: |
     python3 -c "
     import json
+    target_group = '{{ vu_su_wheel_group | default('wheel') }}'
     gid = None
     try:
         with open('/etc/group') as f:
             for line in f:
-                if line.startswith('wheel:'):
+                if line.startswith(f'{target_group}:'):
                     parts = line.split(':')
                     gid = int(parts[2])
+                    break
     except (FileNotFoundError, PermissionError):
         pass
     print(json.dumps(gid))
@@ -123,6 +135,7 @@
   register: vu_wheel_gid_raw
   changed_when: false
   failed_when: false
+  check_mode: false
   tags: [always]
 
 - name: "[PREP] vu_wheel_gid 팩트 등록"
@@ -139,19 +152,37 @@
     mode: "0750"
   tags: [always]
 
-- name: "[PREP] sshd 유닛 존재 여부 확인"
+- name: "[PREP] ssh/sshd 유닛 존재 여부 확인"
   stat:
     path: "{{ item }}"
-  register: vu_sshd_stat
   loop:
     - /etc/systemd/system/sshd.service
     - /usr/lib/systemd/system/sshd.service
     - /lib/systemd/system/sshd.service
+    - /etc/systemd/system/ssh.service
+    - /usr/lib/systemd/system/ssh.service
+    - /lib/systemd/system/ssh.service
+    - /etc/systemd/system/ssh.socket
+    - /usr/lib/systemd/system/ssh.socket
+    - /lib/systemd/system/ssh.socket
+  register: vu_sshd_stat
   tags: [always]
 
-- name: "[PREP] vu_sshd_unit_exists 팩트 계산"
+- name: "[PREP] vu_sshd_unit_exists 및 서비스명 팩트 계산"
   set_fact:
     vu_sshd_unit_exists: "{{ vu_sshd_stat.results | selectattr('stat.exists') | list | length > 0 }}"
+    vu_sshd_service_detected: >-
+      {{
+        'ssh' if ((vu_sshd_stat.results | selectattr('item', 'search', 'ssh\.(service|socket)') | selectattr('stat.exists') | list | length) > 0)
+        else 'sshd'
+      }}
+    vu_sshd_socket_exists: >-
+      {{ ((vu_sshd_stat.results | selectattr('item', 'search', 'ssh\.socket') | selectattr('stat.exists') | list | length) > 0) }}
+  tags: [always]
+
+- name: "[PREP] vu_sshd_service_name 확정"
+  set_fact:
+    vu_sshd_service_name: "{{ vu_sshd_service_name | default(vu_sshd_service_detected) }}"
   tags: [always]
 
 - name: "[PREP] 활성 고위험 토글 집계"
