@@ -16,6 +16,12 @@ Vagrant.configure("2") do |config|
     vb.cpus = 1
   end
 
+  # 호스트 사용자의 SSH 공개키가 존재하면 VM에도 자동 등록
+  host_pubkeys = [
+    File.expand_path("~/.ssh/id_ed25519.pub"),
+    File.expand_path("~/.ssh/id_rsa.pub")
+  ].select { |p| File.exist?(p) }.map { |p| File.read(p).strip }.join("\n")
+
   # Libvirt Provider (QEMU/KVM) 기본 설정 (지원 시)
   config.vm.provider "libvirt" do |lv|
     lv.memory = 1024
@@ -43,6 +49,12 @@ Vagrant.configure("2") do |config|
       if [ -f /home/vagrant/.ssh/authorized_keys ]; then
         cp -f /home/vagrant/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys
       fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ubuntu/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ubuntu/.ssh/authorized_keys -o /home/ubuntu/.ssh/authorized_keys
+      fi
       chown -R ubuntu:ubuntu /home/ubuntu/.ssh
       chmod 700 /home/ubuntu/.ssh
       chmod 600 /home/ubuntu/.ssh/authorized_keys 2>/dev/null || true
@@ -69,6 +81,12 @@ Vagrant.configure("2") do |config|
       mkdir -p /home/ubuntu/.ssh
       if [ -f /home/vagrant/.ssh/authorized_keys ]; then
         cp -f /home/vagrant/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ubuntu/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ubuntu/.ssh/authorized_keys -o /home/ubuntu/.ssh/authorized_keys
       fi
       chown -R ubuntu:ubuntu /home/ubuntu/.ssh
       chmod 700 /home/ubuntu/.ssh

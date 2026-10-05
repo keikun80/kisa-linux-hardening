@@ -77,12 +77,83 @@ ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023 --d
 ansible-playbook -i _selftest/local.ini plays/site.yml --check
 ```
 
-### ④ Vagrant VM 테스트 (Ubuntu 22 / 24)
+### ④ Vagrant VM 테스트 환경 (Ubuntu 22.04 / 24.04 LTS)
 
-실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증합니다.
+실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증할 수 있는 Vagrant 로컬 테스트 환경을 제공합니다.
+
+#### 1) 테스트 환경 사양
+
+| VM 이름 | 배포판 | 게스트 IP | 호스트 포트 | 기본 계정 | sudo 권한 |
+|---------|--------|-----------|-------------|-----------|-----------|
+| `ubuntu22` (`kisa-ubuntu22`) | Ubuntu 22.04 LTS | `192.168.56.22` | `2222` | `ubuntu` / `vagrant` | NOPASSWD |
+| `ubuntu24` (`kisa-ubuntu24`) | Ubuntu 24.04 LTS | `192.168.56.24` | `2224` | `ubuntu` / `vagrant` | NOPASSWD |
+
+* 호스트 머신의 SSH 키(`~/.ssh/id_ed25519.pub` 등)가 프로비저닝 시 자동으로 주입되어 별도 패스워드 없이 접속 가능합니다.
+
+#### 2) 가상머신 라이프사이클 관리
 
 ```bash
-# Ubuntu 22 / 24 가상머신 기동 및 자동 감사
+# 전체 VM 기동 (Ubuntu 22 & 24)
+vagrant up
+
+# 특정 VM만 기동
+vagrant up ubuntu22
+vagrant up ubuntu24
+
+# VM 상태 확인
+vagrant status
+
+# VM 일시 정지 / 중지
+vagrant suspend
+vagrant halt
+
+# VM 완전 삭제 및 초기화
+vagrant destroy -f
+```
+
+#### 3) SSH 터미널 직접 접속
+
+호스트의 `~/.ssh/config`에 설정을 등록하면 터미널에서 호스트명만으로 즉시 접속할 수 있습니다:
+
+```sshconfig
+# ~/.ssh/config 예시
+Host ubuntu22 kisa-ubuntu22
+    HostName 127.0.0.1
+    Port 2222
+    User ubuntu
+    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host ubuntu24 kisa-ubuntu24
+    HostName 127.0.0.1
+    Port 2224
+    User ubuntu
+    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+```
+
+```bash
+# SSH 바로 접속 (기본: ubuntu 계정)
+ssh ubuntu22
+ssh ubuntu24
+
+# vagrant 계정으로 접속할 경우
+ssh vagrant@ubuntu22
+ssh vagrant@ubuntu24
+
+# 또는 Vagrant CLI로 접속
+vagrant ssh ubuntu22
+vagrant ssh ubuntu24
+```
+
+#### 4) 원클릭 자동 감사 & 적용 스크립트
+
+```bash
+# Ubuntu 22 / 24 가상머신 기동 및 전수 감사 자동 수행
 bash scripts/vagrant_test.sh
 
 # 특정 배포판만 기동 및 감사
@@ -91,6 +162,20 @@ DISTRO=ubuntu24 bash scripts/vagrant_test.sh
 
 # 변경 사항 실제 적용 (미리보기 diff)
 ACTION=apply DISTRO=ubuntu22 bash scripts/vagrant_test.sh
+ACTION=apply DISTRO=ubuntu24 bash scripts/vagrant_test.sh
+```
+
+#### 5) Ansible 명령 직접 실행
+
+```bash
+# 연결 핑 테스트
+ansible -i inventory/vagrant.ini all -m ping
+
+# 감사 실행 (check 모드)
+ansible-playbook -i inventory/vagrant.ini plays/site.yml --check
+
+# Ubuntu 22에만 실제 적용
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=ubuntu22 --diff
 ```
 
 
