@@ -7,6 +7,18 @@
 #            EC2 보안군이 이미 담당한다면 OFF로 두고 SG 정책을 인용하면 된다
 # =============================================================================
 
+- name: "[U-28] /etc/hosts.allow 에 접근 허용 규칙 보장 (SSH 차단 방지)"
+  lineinfile:
+    path: /etc/hosts.allow
+    line: "{{ item }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    backup: false
+  loop: "{{ vu_hosts_allow_entries | default(['sshd: ALL']) }}"
+  when: vu_manage_tcp_wrappers | default(true) | bool
+
 - name: "[U-28] /etc/hosts.deny 에 기본 거부(ALL:ALL) 보장"
   lineinfile:
     path: /etc/hosts.deny
@@ -17,6 +29,7 @@
     group: root
     mode: "0644"
     backup: false
+  when: vu_manage_tcp_wrappers | default(true) | bool
 
 # ---------- 방화벽 (높은 리스크 — 토클로만) ------------------------------------
 - name: "[U-28] 방화벽 개방_CIDR 검증 (토글로 적용: vu_manage_host_firewall: true/false)"

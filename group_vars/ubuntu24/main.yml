@@ -1,13 +1,14 @@
 # ===========================================================================
 # Ubuntu 24.04 LTS (Noble Numbat) 특화 프로파일 (dpkg/apt 계열)
 # ===========================================================================
-# 기본 PAM 스택 설정: 사전 백업 후 안전 적용
-vu_pam_strict_stack: true
+# 기본 PAM 스택 설정: Ubuntu는 pam-auth-update 관리 체계이므로 직접 수정 방지 (안전 지침 모드)
+vu_pam_strict_stack: false
 
 # wheel 대체: Ubuntu는 sudo 그룹을 관리자 그룹으로 사용
 vu_su_wheel_group: sudo            # U-06
 vu_wheel_users:                    # U-06/U-08: sudo 그룹에 진입할 계정
   - ubuntu
+  - vagrant
 
 # SSH 서비스 관리 (Ubuntu 24.04: ssh.socket 소켓 활성화 방식이 기본)
 vu_sshd_service_name: ssh

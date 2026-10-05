@@ -52,6 +52,14 @@
       필요시 --become 또는 --ask-become-pass 로 재실행하십시오.
   tags: [always]
 
+- name: "[PREP] APT 패키지 캐시 최신화 (Debian/Ubuntu 계열)"
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_pkg_mgr == 'apt'
+  failed_when: false
+  tags: [always]
+
 # vu_users: JSON 배열로 파싱 — set_fact + Jinja2 >- 는 항상 str 이 되므로 shell + from_json 사용
 - name: "[PREP] 사용자 데이터베이스 로드 (/etc/passwd 파싱 → JSON)"
   shell: |

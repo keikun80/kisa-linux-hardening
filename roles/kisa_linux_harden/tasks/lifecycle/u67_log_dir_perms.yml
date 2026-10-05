@@ -10,7 +10,7 @@
       paths: ["/var/log"]
       owner: root
       group: root
-      mode: "0640"
+      mode: "0755"
       required: true
 
 - name: "[U-67:scan] /var/log 하위 파일 수집"
