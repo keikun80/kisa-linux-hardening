@@ -205,19 +205,24 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=ubuntu
 ├── group_vars/
 │   ├── al2023/main.yml       # Amazon Linux 2023 특화
 │   ├── fedora/main.yml       # Fedora 특화
-│   └── ubuntu/main.yml       # Ubuntu 특화
+│   ├── ubuntu22/main.yml     # Ubuntu 22.04 LTS 특화
+│   └── ubuntu24/main.yml     # Ubuntu 24.04 LTS 특화
 ├── inventory/
-│   └── ec2.example.ini       # 인벤토리 예시
+│   ├── ec2.example.ini       # EC2 인벤토리 예시
+│   └── vagrant.ini           # Vagrant 로컬 VM 테스트 인벤토리
 ├── scripts/
 │   ├── audit.sh              # 감사 래퍼 (--check --diff 강제, 리포트 자동 생성)
 │   ├── report.py             # NDJSON → SUMMARY.md + detail.csv
 │   ├── detect_contamination.py  # 외부 문자(CJK) 침투 검사
-│   └── fix_known_lines.py    # 문자 오염 패처 (역사적)
+│   ├── fix_known_lines.py    # 문자 오염 패처 (역사적)
+│   └── vagrant_test.sh       # Vagrant VM 기동 및 자동 감사/적용 래퍼
 ├── callbacks/
 │   └── results_json.py       # NDJSON 이벤트 출력 콜백
 ├── ansible.cfg               # Ansible 설정
+├── Vagrantfile               # Ubuntu 22 / 24 Multi-VM Vagrant 설정
 ├── _selftest/
-│   └── local.ini             # 로컬 스모크테스트 인벤토리
+│   ├── local.ini             # 로컬 스모크테스트 인벤토리
+│   └── ubuntu.example.ini    # Ubuntu 전용 인벤토리 예시
 ├── reports/                  # 감사 산출물 (실행당 1개 디렉토리)
 └── _source_ref/              # 기존 셸스크립트 감사기, 수동체크 가이드 (읽기 전용)
 ```
