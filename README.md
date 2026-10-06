@@ -77,7 +77,7 @@ ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023 --d
 ansible-playbook -i _selftest/local.ini plays/site.yml --check
 ```
 
-### ④ Vagrant VM 테스트 환경 (Amazon Linux 2023 / Ubuntu 22.04 / 24.04 LTS)
+### ④ Vagrant VM 테스트 환경 (Amazon Linux 2023 / Fedora 41 / Ubuntu 22.04 / 24.04 LTS)
 
 실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증할 수 있는 Vagrant 로컬 멀티 VM 테스트 환경을 제공합니다.
 
@@ -86,6 +86,7 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 | VM 이름 | 배포판 | 게스트 IP | 호스트 포트 | 기본 계정 | sudo 권한 |
 |---------|--------|-----------|-------------|-----------|-----------|
 | `al2023` (`kisa-al2023`) | Amazon Linux 2023 | `192.168.56.23` | `2223` | `ec2-user` / `vagrant` | NOPASSWD |
+| `fedora` (`kisa-fedora`) | Fedora 41 | `192.168.56.41` | `2241` | `fedora` / `vagrant` | NOPASSWD |
 | `ubuntu22` (`kisa-ubuntu22`) | Ubuntu 22.04 LTS | `192.168.56.22` | `2222` | `ubuntu` / `vagrant` | NOPASSWD |
 | `ubuntu24` (`kisa-ubuntu24`) | Ubuntu 24.04 LTS | `192.168.56.24` | `2224` | `ubuntu` / `vagrant` | NOPASSWD |
 
@@ -94,11 +95,12 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 #### 2) 가상머신 라이프사이클 관리
 
 ```bash
-# 전체 VM 기동 (AL2023, Ubuntu 22 & 24)
+# 전체 VM 기동 (AL2023, Fedora, Ubuntu 22 & 24)
 vagrant up
 
 # 특정 VM만 기동
 vagrant up al2023
+vagrant up fedora
 vagrant up ubuntu22
 vagrant up ubuntu24
 
@@ -128,6 +130,15 @@ Host al2023 kisa-al2023
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
 
+Host fedora kisa-fedora
+    HostName 127.0.0.1
+    Port 2241
+    User fedora
+    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
 Host ubuntu22 kisa-ubuntu22
     HostName 127.0.0.1
     Port 2222
@@ -148,18 +159,21 @@ Host ubuntu24 kisa-ubuntu24
 ```
 
 ```bash
-# SSH 바로 접속 (기본 계정: al2023=ec2-user, ubuntu=ubuntu)
+# SSH 바로 접속 (기본 계정: al2023=ec2-user, fedora=fedora, ubuntu=ubuntu)
 ssh al2023
+ssh fedora
 ssh ubuntu22
 ssh ubuntu24
 
 # vagrant 계정으로 접속할 경우
 ssh vagrant@al2023
+ssh vagrant@fedora
 ssh vagrant@ubuntu22
 ssh vagrant@ubuntu24
 
 # 또는 Vagrant CLI로 접속
 vagrant ssh al2023
+vagrant ssh fedora
 vagrant ssh ubuntu22
 vagrant ssh ubuntu24
 ```
@@ -172,11 +186,13 @@ bash scripts/vagrant_test.sh
 
 # 특정 배포판만 기동 및 감사
 DISTRO=al2023 bash scripts/vagrant_test.sh
+DISTRO=fedora bash scripts/vagrant_test.sh
 DISTRO=ubuntu22 bash scripts/vagrant_test.sh
 DISTRO=ubuntu24 bash scripts/vagrant_test.sh
 
 # 변경 사항 실제 적용 (미리보기 diff)
 ACTION=apply DISTRO=al2023 bash scripts/vagrant_test.sh
+ACTION=apply DISTRO=fedora bash scripts/vagrant_test.sh
 ACTION=apply DISTRO=ubuntu22 bash scripts/vagrant_test.sh
 ACTION=apply DISTRO=ubuntu24 bash scripts/vagrant_test.sh
 ```
@@ -192,6 +208,12 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=al2023
 
 # AL2023에 실제 적용
 ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=al2023 --diff
+
+# Fedora 감사 실행
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora --check
+
+# Fedora에 실제 적용
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora --diff
 ```
 
 

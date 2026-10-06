@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 # =============================================================================
-# KISA Linux Hardening — AL2023 / Ubuntu 22 / 24 Vagrant Test Environment
+# KISA Linux Hardening — AL2023 / Fedora / Ubuntu 22 / 24 Vagrant Test Environment
 # =============================================================================
 
 Vagrant.configure("2") do |config|
@@ -123,6 +123,38 @@ Vagrant.configure("2") do |config|
       chown -R ubuntu:ubuntu /home/ubuntu/.ssh
       chmod 700 /home/ubuntu/.ssh
       chmod 600 /home/ubuntu/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Fedora 41
+  # ---------------------------------------------------------------------------
+  config.vm.define "fedora" do |fd|
+    fd.vm.box = "bento/fedora-41"
+    fd.vm.hostname = "kisa-fedora"
+    fd.vm.network "private_network", ip: "192.168.56.41"
+    fd.vm.network "forwarded_port", guest: 22, host: 2241, id: "ssh", auto_correct: true
+
+    fd.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # fedora 사용자 및 sudo/wheel 설정
+      id -u fedora >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel fedora
+      echo 'fedora ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/fedora
+      chmod 0440 /etc/sudoers.d/fedora
+      # vagrant ssh 키를 fedora 계정에도 배포
+      mkdir -p /home/fedora/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/fedora/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/fedora/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/fedora/.ssh/authorized_keys -o /home/fedora/.ssh/authorized_keys
+      fi
+      chown -R fedora:fedora /home/fedora/.ssh
+      chmod 700 /home/fedora/.ssh
+      chmod 600 /home/fedora/.ssh/authorized_keys 2>/dev/null || true
     SHELL
   end
 end
