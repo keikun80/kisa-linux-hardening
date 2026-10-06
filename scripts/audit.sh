@@ -4,7 +4,7 @@
 # '호스트 x U-ID' 매트릭스로 묶어 리포트(reports/) 로 보관한다.
 #
 #   ./audit.sh                                    # 전체 인벤토리
-#   DISTRO=al2023 ./audit.sh                      # 배포그룹 선택 (al2023/fedora/rocky8/rocky9/ubuntu22/ubuntu24)
+#   DISTRO=al2023 ./audit.sh                      # 배포그룹 선택 (al2023/fedora/rocky8/rocky9/rocky10/ubuntu22/ubuntu24)
 #   INV=inventory/ec2.ini ./audit.sh -t u-65     # 특정 태그만
 #   EXTRA="--diff" ./audit.sh
 #
@@ -31,12 +31,12 @@ if [ $# -gt 0 ]; then
   ARGS+=("$@")
 fi
 
-# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu22 | ubuntu24 (미설정 = 전체 인벤토리)
+# 배포그룹 선택: DISTRO=al2023 | fedora | ubuntu22 | ubuntu24 | rocky8 | rocky9 | rocky10 (미설정 = 전체 인벤토리)
 DISTRO="${DISTRO:-}"
 if [ -n "${DISTRO}" ]; then
   case "${DISTRO}" in
-    al2023|fedora|ubuntu22|ubuntu24|rocky8|rocky9) ;;
-    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu22, ubuntu24, rocky8, rocky9 (미설정은 전체)"; exit 2;;
+    al2023|fedora|ubuntu22|ubuntu24|rocky8|rocky9|rocky10) ;;
+    *) echo "[audit] DISTRO='${DISTRO}' 인식을 못 했습니다 — 선택: al2023, fedora, ubuntu22, ubuntu24, rocky8, rocky9, rocky10 (미설정은 전체)"; exit 2;;
   esac
   if ! grep -qE "^[[:space:]]*\[${DISTRO}\]" "${INV}" 2>/dev/null; then
     echo "[audit] 인벤토리 ${INV} 에 '${DISTRO}' 그룹이 없습니다"

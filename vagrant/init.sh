@@ -11,8 +11,9 @@
 #   bash vagrant/init.sh al2023            # al2023만 초기화
 #   bash vagrant/init.sh ubuntu22          # ubuntu22만 초기화
 #   DISTRO=rocky9 bash vagrant/init.sh     # rocky9만 초기화
+#   DISTRO=rocky10 bash vagrant/init.sh    # rocky10만 초기화
 #
-# 지원 배포판: al2023, fedora, rocky8, rocky9, ubuntu22, ubuntu24, all
+# 지원 배포판: al2023, fedora, rocky8, rocky9, rocky10, ubuntu22, ubuntu24, all
 # ==============================================================================
 set -euo pipefail
 

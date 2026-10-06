@@ -1,0 +1,28 @@
+# ===========================================================================
+# Rocky Linux 10 특화 프로파일 (dnf/rpm 계열, wheel 그룹 보유)
+# ===========================================================================
+vu_pam_strict_stack: true          # RHEL 계열과 동일, U-02/U-03 PAM 조치 자동 적용
+vu_su_wheel_group: wheel           # U-06: /etc/pam.d/su 의 pam_wheel.group, su 바이너리 root:wheel 4750
+vu_wheel_users:                    # U-06/U-08: wheel 그룹에 진입할 계정
+  - rocky
+  - vagrant
+
+vu_chrony_unit: chronyd            # U-65
+vu_logging_service: rsyslog        # U-66: Rocky 10 기본 로깅 서비스
+
+vu_legacysvc_pkgmap:               # U-34/36/44/52: vu_legacy_service_cleanup=true 일 때 제거 후보
+  finger: []
+  rservices: [rsh-server, rsh-client, rlogin]
+  tftp: [tftp-server]
+  talk: []
+  telnet: [telnet-server]
+vu_snmp_pkgs: [net-snmp]           # U-58
+vu_nfs_server_pkgs: [nfs-utils]    # U-39
+vu_autofs_pkgs: [autofs]           # U-41
+vu_nis_pkgs: [nis]                 # U-43
+vu_ftp_server_pkgs: [vsftpd]       # U-54
+vu_dns_server_pkgs: [bind]         # U-49 탐지용
+
+vu_autopatch:
+  pkg: dnf-automatic               # U-64: 주간 보안 자가 패칭
+  timer_unit: dnf-automatic.timer

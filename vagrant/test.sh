@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Vagrant 기반 AL2023 / Fedora / Rocky 8/9 / Ubuntu 22/24 KISA 하드닝 감사 및 테스트
+# Vagrant 기반 AL2023 / Fedora / Rocky 8/9/10 / Ubuntu 22/24 KISA 하드닝 감사 및 테스트
 # ==============================================================================
 # 사용법:
 #   bash vagrant/test.sh                  # 모든 VM 기동 및 감사(audit) 수행
@@ -8,6 +8,7 @@
 #   bash vagrant/test.sh fedora           # Fedora만 기동 및 감사
 #   bash vagrant/test.sh rocky8           # Rocky 8만 기동 및 감사
 #   bash vagrant/test.sh rocky9           # Rocky 9만 기동 및 감사
+#   bash vagrant/test.sh rocky10          # Rocky 10만 기동 및 감사
 #   bash vagrant/test.sh ubuntu22         # Ubuntu 22만 기동 및 감사
 #   bash vagrant/test.sh ubuntu24         # Ubuntu 24만 기동 및 감사
 #   ACTION=apply bash vagrant/test.sh     # 실제 적용 (기본: check/audit)
@@ -42,6 +43,9 @@ case "${DISTRO}" in
   rocky9)
     vagrant up rocky9
     ;;
+  rocky10)
+    vagrant up rocky10
+    ;;
   ubuntu22)
     vagrant up ubuntu22
     ;;
@@ -52,7 +56,7 @@ case "${DISTRO}" in
     vagrant up
     ;;
   *)
-    echo "알 수 없는 DISTRO: ${DISTRO} (선택: al2023, fedora, rocky8, rocky9, ubuntu22, ubuntu24, all)"
+    echo "알 수 없는 DISTRO: ${DISTRO} (선택: al2023, fedora, rocky8, rocky9, rocky10, ubuntu22, ubuntu24, all)"
     exit 1
     ;;
 esac

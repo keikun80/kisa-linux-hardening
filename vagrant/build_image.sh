@@ -25,7 +25,7 @@ TARGET="${1:-${DISTRO:-}}"
 APPLY_HARDENING="${APPLY_HARDENING:-0}"
 OUTDIR="${OUTDIR:-${SCRIPT_DIR}/images}"
 
-ALL_DISTROS=("al2023" "fedora" "rocky8" "rocky9" "ubuntu22" "ubuntu24")
+ALL_DISTROS=("al2023" "fedora" "rocky8" "rocky9" "rocky10" "ubuntu22" "ubuntu24")
 
 if [ -z "${TARGET}" ]; then
   echo "======================================================================"
@@ -38,6 +38,7 @@ if [ -z "${TARGET}" ]; then
   echo "  - fedora     (Fedora 41)"
   echo "  - rocky8     (Rocky Linux 8)"
   echo "  - rocky9     (Rocky Linux 9)"
+  echo "  - rocky10    (Rocky Linux 10)"
   echo "  - ubuntu22   (Ubuntu 22.04 LTS)"
   echo "  - ubuntu24   (Ubuntu 24.04 LTS)"
   echo "  - all        (모든 배포판 순차 빌드)"

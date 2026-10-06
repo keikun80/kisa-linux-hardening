@@ -8,7 +8,7 @@
 
 | 파일/폴더 | 설명 |
 |---|---|
-| [`Vagrantfile`](file:///home/keikun/project/kisa-linux-hardening/vagrant/Vagrantfile) | 6개 배포판(AL2023, Fedora, Rocky 8/9, Ubuntu 22/24) VM 정의 파일 |
+| [`Vagrantfile`](file:///home/keikun/project/kisa-linux-hardening/vagrant/Vagrantfile) | 7개 배포판(AL2023, Fedora, Rocky 8/9/10, Ubuntu 22/24) VM 정의 파일 |
 | [`init.sh`](file:///home/keikun/project/kisa-linux-hardening/vagrant/init.sh) | Vagrant VM 완전 초기화 및 신규 생성 스크립트 |
 | [`build_image.sh`](file:///home/keikun/project/kisa-linux-hardening/vagrant/build_image.sh) | VM을 `.box` 이미지로 패키징/내보내기 (하드닝 적용 옵션 포함) |
 | [`test.sh`](file:///home/keikun/project/kisa-linux-hardening/vagrant/test.sh) | VM 대상 KISA 감사(audit) 및 실제 적용(apply) 실행 스크립트 |
@@ -99,6 +99,7 @@ vagrant destroy -f ubuntu22
 | `fedora` | Fedora 41 | `192.168.56.41` | `2241` | `fedora` / `vagrant` | NOPASSWD |
 | `rocky8` | Rocky Linux 8 | `192.168.56.8` | `2208` | `rocky` / `vagrant` | NOPASSWD |
 | `rocky9` | Rocky Linux 9 | `192.168.56.9` | `2209` | `rocky` / `vagrant` | NOPASSWD |
+| `rocky10` | Rocky Linux 10 | `192.168.56.10` | `2210` | `rocky` / `vagrant` | NOPASSWD |
 | `ubuntu22` | Ubuntu 22.04 LTS | `192.168.56.22` | `2222` | `ubuntu` / `vagrant` | NOPASSWD |
 | `ubuntu24` | Ubuntu 24.04 LTS | `192.168.56.24` | `2224` | `ubuntu` / `vagrant` | NOPASSWD |
 
@@ -109,6 +110,7 @@ vagrant ssh al2023
 vagrant ssh fedora
 vagrant ssh rocky8
 vagrant ssh rocky9
+vagrant ssh rocky10
 vagrant ssh ubuntu22
 vagrant ssh ubuntu24
 ```

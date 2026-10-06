@@ -28,6 +28,7 @@
 | Fedora | `fedora` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Rocky Linux 8 | `rocky8` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Rocky Linux 9 | `rocky9` | dnf-automatic, chronyd, PAM 스택 자동구성 |
+| Rocky Linux 10 | `rocky10` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Ubuntu 22.04 LTS | `ubuntu22` | unattended-upgrades, chrony, rsyslog, ssh.service |
 | Ubuntu 24.04 LTS | `ubuntu24` | unattended-upgrades, chrony, journald, ssh.socket 대응 |
 
@@ -45,7 +46,7 @@
 # 전체 인벤토리 전수 감사
 bash scripts/audit.sh
 
-# 특정 배포그룹만 (al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24)
+# 특정 배포그룹만 (al2023 / fedora / rocky8 / rocky9 / rocky10 / ubuntu22 / ubuntu24)
 DISTRO=ubuntu22 bash scripts/audit.sh
 DISTRO=ubuntu24 bash scripts/audit.sh
 
@@ -91,6 +92,7 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 | `fedora` (`kisa-fedora`) | Fedora 41 | `192.168.56.41` | `2241` | `fedora` / `vagrant` | NOPASSWD |
 | `rocky8` (`kisa-rocky8`) | Rocky Linux 8 | `192.168.56.8` | `2208` | `rocky` / `vagrant` | NOPASSWD |
 | `rocky9` (`kisa-rocky9`) | Rocky Linux 9 | `192.168.56.9` | `2209` | `rocky` / `vagrant` | NOPASSWD |
+| `rocky10` (`kisa-rocky10`) | Rocky Linux 10 | `192.168.56.10` | `2210` | `rocky` / `vagrant` | NOPASSWD |
 | `ubuntu22` (`kisa-ubuntu22`) | Ubuntu 22.04 LTS | `192.168.56.22` | `2222` | `ubuntu` / `vagrant` | NOPASSWD |
 | `ubuntu24` (`kisa-ubuntu24`) | Ubuntu 24.04 LTS | `192.168.56.24` | `2224` | `ubuntu` / `vagrant` | NOPASSWD |
 
@@ -168,6 +170,7 @@ vagrant ssh al2023
 vagrant ssh fedora
 vagrant ssh rocky8
 vagrant ssh rocky9
+vagrant ssh rocky10
 vagrant ssh ubuntu22
 vagrant ssh ubuntu24
 
@@ -178,7 +181,8 @@ vagrant ssh ubuntu24
 
 ```
 ├── plays/
-│   └── site.yml              # 진입점 (serial: 1, become: sudo)
+│   ├── site.yml              # 진입점 (배포판 선택 가능, 기본 serial: 1)
+│   └── rocky10.yml           # Rocky Linux 10 전용 플레이북
 ├── roles/
 │   └── kisa_linux_harden/
 │       ├── defaults/
@@ -196,7 +200,7 @@ vagrant ssh ubuntu24
 │               ├── file_perms.yml  # 파일 권한 설정 공통 패턴
 │               └── unit_off.yml    # 서비스 중지+mask 공통 패턴
 ├── vagrant/                  # Vagrant 로컬 가상머신 환경 및 도구
-│   ├── Vagrantfile           # 6개 배포판 멀티 VM 정의
+│   ├── Vagrantfile           # 7개 배포판 멀티 VM 정의
 │   ├── init.sh               # VM 완전 초기화/신규 생성 스크립트
 │   ├── build_image.sh        # Vagrant Box(이미지) 패키징 스크립트
 │   ├── test.sh               # Vagrant 대상 자동 감사/적용 테스트 스크립트
@@ -207,6 +211,7 @@ vagrant ssh ubuntu24
 │   ├── fedora/main.yml       # Fedora 특화
 │   ├── rocky8/main.yml       # Rocky Linux 8 특화
 │   ├── rocky9/main.yml       # Rocky Linux 9 특화
+│   ├── rocky10/main.yml      # Rocky Linux 10 특화
 │   ├── ubuntu22/main.yml     # Ubuntu 22.04 LTS 특화
 │   └── ubuntu24/main.yml     # Ubuntu 24.04 LTS 특화
 ├── inventory/
@@ -336,7 +341,7 @@ vagrant ssh ubuntu24
 | 변수 | 설명 | 예시 |
 |------|------|------|
 | `INV` | 인벤토리 파일 경로 (기본: `inventory/ec2.ini`) | `INV=inventory/myfleet.ini` |
-| `DISTRO` | 배포그룹 선택 (al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24) | `DISTRO=al2023` |
+| `DISTRO` | 배포그룹 선택 (al2023 / fedora / rocky8 / rocky9 / rocky10 / ubuntu22 / ubuntu24) | `DISTRO=al2023` |
 
 ---
 

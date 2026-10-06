@@ -1,0 +1,27 @@
+# =============================================================================
+# Rocky Linux 10 전용 KISA 취약점 강화 및 감사 플레이북 (U-01 ~ U-67)
+# =============================================================================
+# 사용법:
+#   # 읽기 전용 감사 (DRY-RUN)
+#   ansible-playbook -i inventory/ec2.ini plays/rocky10.yml --check
+#
+#   # 변경량 확인 (미리보기)
+#   ansible-playbook -i inventory/ec2.ini plays/rocky10.yml --diff
+#
+#   # 실제 하드닝 적용
+#   ansible-playbook -i inventory/ec2.ini plays/rocky10.yml
+#
+#   # 특정 점검 항목만 실행 (예: U-65 시간 동기화)
+#   ansible-playbook -i inventory/ec2.ini plays/rocky10.yml -t u-65
+#
+#   # 카테고리 단위 실행 (계정/파일/서비스/생명주기)
+#   ansible-playbook -i inventory/ec2.ini plays/rocky10.yml -t cat.accounts
+# =============================================================================
+- name: KISA 주요기반시설 Linux 취약점 강화 및 감사 — Rocky Linux 10 (U-01 ~ U-67)
+  hosts: rocky10
+  serial: 1
+  become: true
+  become_method: sudo
+  gather_facts: true
+  roles:
+    - kisa_linux_harden
