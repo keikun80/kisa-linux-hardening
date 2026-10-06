@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 # =============================================================================
-# KISA Linux Hardening — AL2023 / Fedora / Ubuntu 22 / 24 Vagrant Test Environment
+# KISA Linux Hardening — AL2023 / Fedora / Rocky 8/9 / Ubuntu 22/24 Vagrant Test Environment
 # =============================================================================
 
 Vagrant.configure("2") do |config|
@@ -155,6 +155,70 @@ Vagrant.configure("2") do |config|
       chown -R fedora:fedora /home/fedora/.ssh
       chmod 700 /home/fedora/.ssh
       chmod 600 /home/fedora/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Rocky Linux 8
+  # ---------------------------------------------------------------------------
+  config.vm.define "rocky8" do |r8|
+    r8.vm.box = "bento/rocky-8"
+    r8.vm.hostname = "kisa-rocky8"
+    r8.vm.network "private_network", ip: "192.168.56.8"
+    r8.vm.network "forwarded_port", guest: 22, host: 2208, id: "ssh", auto_correct: true
+
+    r8.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # rocky 사용자 및 sudo/wheel 설정
+      id -u rocky >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel rocky
+      echo 'rocky ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/rocky
+      chmod 0440 /etc/sudoers.d/rocky
+      # vagrant ssh 키를 rocky 계정에도 배포
+      mkdir -p /home/rocky/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/rocky/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/rocky/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/rocky/.ssh/authorized_keys -o /home/rocky/.ssh/authorized_keys
+      fi
+      chown -R rocky:rocky /home/rocky/.ssh
+      chmod 700 /home/rocky/.ssh
+      chmod 600 /home/rocky/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Rocky Linux 9
+  # ---------------------------------------------------------------------------
+  config.vm.define "rocky9" do |r9|
+    r9.vm.box = "bento/rocky-9"
+    r9.vm.hostname = "kisa-rocky9"
+    r9.vm.network "private_network", ip: "192.168.56.9"
+    r9.vm.network "forwarded_port", guest: 22, host: 2209, id: "ssh", auto_correct: true
+
+    r9.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # rocky 사용자 및 sudo/wheel 설정
+      id -u rocky >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel rocky
+      echo 'rocky ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/rocky
+      chmod 0440 /etc/sudoers.d/rocky
+      # vagrant ssh 키를 rocky 계정에도 배포
+      mkdir -p /home/rocky/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/rocky/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/rocky/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/rocky/.ssh/authorized_keys -o /home/rocky/.ssh/authorized_keys
+      fi
+      chown -R rocky:rocky /home/rocky/.ssh
+      chmod 700 /home/rocky/.ssh
+      chmod 600 /home/rocky/.ssh/authorized_keys 2>/dev/null || true
     SHELL
   end
 end

@@ -26,6 +26,8 @@
 |--------|--------|-------------|
 | Amazon Linux 2023 | `al2023` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Fedora | `fedora` | dnf-automatic, chronyd, PAM 스택 자동구성 |
+| Rocky Linux 8 | `rocky8` | dnf-automatic, chronyd, PAM 스택 자동구성 |
+| Rocky Linux 9 | `rocky9` | dnf-automatic, chronyd, PAM 스택 자동구성 |
 | Ubuntu 22.04 LTS | `ubuntu22` | unattended-upgrades, chrony, rsyslog, ssh.service |
 | Ubuntu 24.04 LTS | `ubuntu24` | unattended-upgrades, chrony, journald, ssh.socket 대응 |
 
@@ -43,7 +45,7 @@
 # 전체 인벤토리 전수 감사
 bash scripts/audit.sh
 
-# 특정 배포그룹만 (al2023 / fedora / ubuntu22 / ubuntu24)
+# 특정 배포그룹만 (al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24)
 DISTRO=ubuntu22 bash scripts/audit.sh
 DISTRO=ubuntu24 bash scripts/audit.sh
 
@@ -77,7 +79,7 @@ ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023 --d
 ansible-playbook -i _selftest/local.ini plays/site.yml --check
 ```
 
-### ④ Vagrant VM 테스트 환경 (Amazon Linux 2023 / Fedora 41 / Ubuntu 22.04 / 24.04 LTS)
+### ④ Vagrant VM 테스트 환경 (Amazon Linux 2023 / Fedora 41 / Rocky 8/9 / Ubuntu 22.04 / 24.04 LTS)
 
 실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증할 수 있는 Vagrant 로컬 멀티 VM 테스트 환경을 제공합니다.
 
@@ -87,6 +89,8 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 |---------|--------|-----------|-------------|-----------|-----------|
 | `al2023` (`kisa-al2023`) | Amazon Linux 2023 | `192.168.56.23` | `2223` | `ec2-user` / `vagrant` | NOPASSWD |
 | `fedora` (`kisa-fedora`) | Fedora 41 | `192.168.56.41` | `2241` | `fedora` / `vagrant` | NOPASSWD |
+| `rocky8` (`kisa-rocky8`) | Rocky Linux 8 | `192.168.56.8` | `2208` | `rocky` / `vagrant` | NOPASSWD |
+| `rocky9` (`kisa-rocky9`) | Rocky Linux 9 | `192.168.56.9` | `2209` | `rocky` / `vagrant` | NOPASSWD |
 | `ubuntu22` (`kisa-ubuntu22`) | Ubuntu 22.04 LTS | `192.168.56.22` | `2222` | `ubuntu` / `vagrant` | NOPASSWD |
 | `ubuntu24` (`kisa-ubuntu24`) | Ubuntu 24.04 LTS | `192.168.56.24` | `2224` | `ubuntu` / `vagrant` | NOPASSWD |
 
@@ -95,12 +99,14 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 #### 2) 가상머신 라이프사이클 관리
 
 ```bash
-# 전체 VM 기동 (AL2023, Fedora, Ubuntu 22 & 24)
+# 전체 VM 기동 (AL2023, Fedora, Rocky 8/9, Ubuntu 22 & 24)
 vagrant up
 
 # 특정 VM만 기동
 vagrant up al2023
 vagrant up fedora
+vagrant up rocky8
+vagrant up rocky9
 vagrant up ubuntu22
 vagrant up ubuntu24
 
@@ -139,6 +145,24 @@ Host fedora kisa-fedora
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
 
+Host rocky8 kisa-rocky8
+    HostName 127.0.0.1
+    Port 2208
+    User rocky
+    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host rocky9 kisa-rocky9
+    HostName 127.0.0.1
+    Port 2209
+    User rocky
+    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
 Host ubuntu22 kisa-ubuntu22
     HostName 127.0.0.1
     Port 2222
@@ -159,21 +183,27 @@ Host ubuntu24 kisa-ubuntu24
 ```
 
 ```bash
-# SSH 바로 접속 (기본 계정: al2023=ec2-user, fedora=fedora, ubuntu=ubuntu)
+# SSH 바로 접속 (기본 계정: al2023=ec2-user, fedora=fedora, rocky=rocky, ubuntu=ubuntu)
 ssh al2023
 ssh fedora
+ssh rocky8
+ssh rocky9
 ssh ubuntu22
 ssh ubuntu24
 
 # vagrant 계정으로 접속할 경우
 ssh vagrant@al2023
 ssh vagrant@fedora
+ssh vagrant@rocky8
+ssh vagrant@rocky9
 ssh vagrant@ubuntu22
 ssh vagrant@ubuntu24
 
 # 또는 Vagrant CLI로 접속
 vagrant ssh al2023
 vagrant ssh fedora
+vagrant ssh rocky8
+vagrant ssh rocky9
 vagrant ssh ubuntu22
 vagrant ssh ubuntu24
 ```
@@ -187,12 +217,16 @@ bash scripts/vagrant_test.sh
 # 특정 배포판만 기동 및 감사
 DISTRO=al2023 bash scripts/vagrant_test.sh
 DISTRO=fedora bash scripts/vagrant_test.sh
+DISTRO=rocky8 bash scripts/vagrant_test.sh
+DISTRO=rocky9 bash scripts/vagrant_test.sh
 DISTRO=ubuntu22 bash scripts/vagrant_test.sh
 DISTRO=ubuntu24 bash scripts/vagrant_test.sh
 
 # 변경 사항 실제 적용 (미리보기 diff)
 ACTION=apply DISTRO=al2023 bash scripts/vagrant_test.sh
 ACTION=apply DISTRO=fedora bash scripts/vagrant_test.sh
+ACTION=apply DISTRO=rocky8 bash scripts/vagrant_test.sh
+ACTION=apply DISTRO=rocky9 bash scripts/vagrant_test.sh
 ACTION=apply DISTRO=ubuntu22 bash scripts/vagrant_test.sh
 ACTION=apply DISTRO=ubuntu24 bash scripts/vagrant_test.sh
 ```
@@ -214,6 +248,14 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora
 
 # Fedora에 실제 적용
 ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora --diff
+
+# Rocky 8 감사 및 적용
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky8 --check
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky8 --diff
+
+# Rocky 9 감사 및 적용
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9 --check
+ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9 --diff
 ```
 
 
@@ -243,6 +285,8 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora
 ├── group_vars/
 │   ├── al2023/main.yml       # Amazon Linux 2023 특화
 │   ├── fedora/main.yml       # Fedora 특화
+│   ├── rocky8/main.yml       # Rocky Linux 8 특화
+│   ├── rocky9/main.yml       # Rocky Linux 9 특화
 │   ├── ubuntu22/main.yml     # Ubuntu 22.04 LTS 특화
 │   └── ubuntu24/main.yml     # Ubuntu 24.04 LTS 특화
 ├── inventory/
@@ -372,7 +416,7 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora
 | 변수 | 설명 | 예시 |
 |------|------|------|
 | `INV` | 인벤토리 파일 경로 (기본: `inventory/ec2.ini`) | `INV=inventory/myfleet.ini` |
-| `DISTRO` | 배포그룹 선택 (al2023 / fedora / ubuntu) | `DISTRO=al2023` |
+| `DISTRO` | 배포그룹 선택 (al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24) | `DISTRO=al2023` |
 
 ---
 

@@ -12,9 +12,9 @@
 #   # 카테고리 단위
 #   ansible-playbook -i inventory/ec2.ini plays/site.yml -t cat.accounts
 #
-#   # 배포그룹 선택 (al2023 / fedora / ubuntu22 / ubuntu24) — group_vars 프로파일 자동 추종
+#   # 배포그룹 선택 (al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24) — group_vars 프로파일 자동 추종
 #   ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023
-#   ./scripts/audit.sh 랑으로는 : DISTRO=ubuntu22 ./scripts/audit.sh  (미설정 시 전체)
+#   ./scripts/audit.sh 랑으로는 : DISTRO=rocky8 ./scripts/audit.sh  (미설정 시 전체)
 #
 #   # 진짜 적용 (권장 순서: 먼저 --check 로 변화분을 확인)
 #   ansible-playbook -i inventory/ec2.ini plays/site.yml --diff
@@ -22,7 +22,7 @@
 # 태그 체계 : u-01 … u-67 (ID), cat.accounts/cat.files/cat.services/cat.lifecycle
 # =============================================================================
 - name: KISA 주요기반시설 Linux 취약점 강화 및 감사 (U-01 ~ U-67)
-  hosts: "{{ distro_select | default('al2023') }}"   # al2023 / fedora / ubuntu22 / ubuntu24 / all(미설정 기본)
+  hosts: "{{ distro_select | default('al2023') }}"   # al2023 / fedora / rocky8 / rocky9 / ubuntu22 / ubuntu24 / all(미설정 기본)
   serial: 1                # 일괄 확산 사고 방지. 안정 확인 후 serial: 3 등 완화
   become: true             # 강제 작업은 root 로 수행
   become_method: sudo
