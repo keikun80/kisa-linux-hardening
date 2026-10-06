@@ -79,9 +79,9 @@ ansible-playbook -i inventory/ec2.ini plays/site.yml -e distro_select=al2023 --d
 ansible-playbook -i _selftest/local.ini plays/site.yml --check
 ```
 
-### ④ Vagrant VM 테스트 환경 (Amazon Linux 2023 / Fedora 41 / Rocky 8/9 / Ubuntu 22.04 / 24.04 LTS)
+### ④ Vagrant VM 테스트 및 이미지 빌드 환경 (`vagrant/`)
 
-실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증할 수 있는 Vagrant 로컬 멀티 VM 테스트 환경을 제공합니다.
+실제 가상머신 환경에서 완벽한 systemd/PAM/SSH 하드닝 동작을 검증하고, 패키징된 커스텀 골든 이미지(`.box`)를 빌드할 수 있는 통합 도구를 `vagrant/` 디렉토리에 제공합니다.
 
 #### 1) 테스트 환경 사양
 
@@ -96,168 +96,104 @@ ansible-playbook -i _selftest/local.ini plays/site.yml --check
 
 * 호스트 머신의 SSH 키(`~/.ssh/id_ed25519.pub` 등)가 프로비저닝 시 자동으로 주입되어 별도 패스워드 없이 접속 가능합니다.
 
-#### 2) 가상머신 라이프사이클 관리
+#### 2) Vagrant 테스트 표준 절차 (권장 워크플로우)
 
-```bash
-# 전체 VM 기동 (AL2023, Fedora, Rocky 8/9, Ubuntu 22 & 24)
-vagrant up
-
-# 특정 VM만 기동
-vagrant up al2023
-vagrant up fedora
-vagrant up rocky8
-vagrant up rocky9
-vagrant up ubuntu22
-vagrant up ubuntu24
-
-# VM 상태 확인
-vagrant status
-
-# VM 일시 정지 / 중지
-vagrant suspend
-vagrant halt
-
-# VM 완전 삭제 및 초기화
-vagrant destroy -f
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  1. 초기화   │ ──> │ 2. 사전 감사 │ ──> │  3. 하드닝   │ ──> │ 4. 사후 검증 │ ──> │ 5. 이미지    │
+│  (init.sh)   │     │  (Audit #1)  │     │ 적용 (Apply) │     │  (Audit #2)  │     │ 빌드(선택)   │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
-#### 3) SSH 터미널 직접 접속
+##### 1단계: VM 초기화 및 깨끗한 환경 기동
+```bash
+# 전체 VM 초기화 및 기동
+bash vagrant/init.sh
 
-호스트의 `~/.ssh/config`에 설정을 등록하면 터미널에서 호스트명만으로 즉시 접속할 수 있습니다:
-
-```sshconfig
-# ~/.ssh/config 예시
-Host al2023 kisa-al2023
-    HostName 127.0.0.1
-    Port 2223
-    User ec2-user
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-
-Host fedora kisa-fedora
-    HostName 127.0.0.1
-    Port 2241
-    User fedora
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-
-Host rocky8 kisa-rocky8
-    HostName 127.0.0.1
-    Port 2208
-    User rocky
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-
-Host rocky9 kisa-rocky9
-    HostName 127.0.0.1
-    Port 2209
-    User rocky
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-
-Host ubuntu22 kisa-ubuntu22
-    HostName 127.0.0.1
-    Port 2222
-    User ubuntu
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-
-Host ubuntu24 kisa-ubuntu24
-    HostName 127.0.0.1
-    Port 2224
-    User ubuntu
-    IdentityFile ~/.ssh/id_ed25519
-    IdentityFile ~/.vagrant.d/insecure_private_keys/vagrant.key.ed25519
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
+# 또는 특정 배포판만 초기화 (예: Ubuntu 22.04)
+bash vagrant/init.sh ubuntu22
 ```
 
+##### 2단계: 하드닝 적용 전 기준선(Baseline) 전수 감사
+변경 없이 현재 OS의 보안 취약점 상태를 측정합니다. 리포트는 `reports/<시간>/`에 생성됩니다.
 ```bash
-# SSH 바로 접속 (기본 계정: al2023=ec2-user, fedora=fedora, rocky=rocky, ubuntu=ubuntu)
-ssh al2023
-ssh fedora
-ssh rocky8
-ssh rocky9
-ssh ubuntu22
-ssh ubuntu24
+# 전체 VM 감사
+bash vagrant/test.sh
 
-# vagrant 계정으로 접속할 경우
-ssh vagrant@al2023
-ssh vagrant@fedora
-ssh vagrant@rocky8
-ssh vagrant@rocky9
-ssh vagrant@ubuntu22
-ssh vagrant@ubuntu24
+# 특정 배포판만 감사
+bash vagrant/test.sh ubuntu22
+```
 
-# 또는 Vagrant CLI로 접속
+##### 3단계: KISA 보안 하드닝 실제 적용
+67개 점검 항목에 대한 보안 조치를 가상머신에 적용합니다.
+```bash
+# 특정 배포판에 하드닝 적용
+ACTION=apply bash vagrant/test.sh ubuntu22
+
+# 전체 배포판에 하드닝 적용
+ACTION=apply bash vagrant/test.sh
+```
+
+##### 4단계: 하드닝 적용 후 재검증 감사
+하드닝 후 다시 감사를 실행하여 취약점(✗ / ▲)이 모두 정상(·)으로 해결되었는지 확인합니다.
+```bash
+bash vagrant/test.sh ubuntu22
+```
+
+##### 5단계 (선택): 검증된 강화 골든 이미지 패키징
+검증이 완료된 VM을 다른 프로젝트나 팀에서 재사용할 수 있는 `.box` 파일로 패키징합니다.
+```bash
+bash vagrant/build_image.sh ubuntu22
+```
+
+##### 6단계: 테스트 종료 및 VM 정리
+```bash
+cd vagrant
+
+# VM 일시 정지/중지
+vagrant halt ubuntu22
+
+# VM 완전 삭제
+vagrant destroy -f ubuntu22
+```
+
+---
+
+#### 3) SSH 터미널 직접 접속 및 개별 제어
+
+```bash
+# Vagrant CLI로 접속
+cd vagrant
 vagrant ssh al2023
 vagrant ssh fedora
 vagrant ssh rocky8
 vagrant ssh rocky9
 vagrant ssh ubuntu22
 vagrant ssh ubuntu24
+
+# VM 상태 확인
+vagrant status
 ```
 
-#### 4) 원클릭 자동 감사 & 적용 스크립트
+### ⑤ AWS EC2 테스트 인프라 (`terraform/`)
+
+AWS 환경에서 1대의 **Admin 노드(Ansible 컨트롤러)**와 **6개 타깃 OS 노드(AL2023, Fedora, Rocky 8/9, Ubuntu 22/24)**를 전용 VPC 내에 자동 프로비저닝하고 테스트할 수 있습니다.
 
 ```bash
-# 전체 가상머신 기동 및 전수 감사 자동 수행
-bash scripts/vagrant_test.sh
+# 1. 인프라 원클릭 배포 (VPC, Admin 노드, 6종 OS 인스턴스 생성)
+bash terraform/deploy.sh
 
-# 특정 배포판만 기동 및 감사
-DISTRO=al2023 bash scripts/vagrant_test.sh
-DISTRO=fedora bash scripts/vagrant_test.sh
-DISTRO=rocky8 bash scripts/vagrant_test.sh
-DISTRO=rocky9 bash scripts/vagrant_test.sh
-DISTRO=ubuntu22 bash scripts/vagrant_test.sh
-DISTRO=ubuntu24 bash scripts/vagrant_test.sh
+# 2. 프로젝트 코드를 Admin 노드로 동기화
+bash terraform/sync_to_admin.sh
 
-# 변경 사항 실제 적용 (미리보기 diff)
-ACTION=apply DISTRO=al2023 bash scripts/vagrant_test.sh
-ACTION=apply DISTRO=fedora bash scripts/vagrant_test.sh
-ACTION=apply DISTRO=rocky8 bash scripts/vagrant_test.sh
-ACTION=apply DISTRO=rocky9 bash scripts/vagrant_test.sh
-ACTION=apply DISTRO=ubuntu22 bash scripts/vagrant_test.sh
-ACTION=apply DISTRO=ubuntu24 bash scripts/vagrant_test.sh
+# 3. KISA 감사 및 하드닝 테스트 실행
+bash terraform/test.sh              # 로컬에서 직접 실행
+# 또는
+ssh ubuntu@<ADMIN_IP>              # Admin 노드 접속 후 실행
+
+# 4. 테스트 완료 후 인프라 삭제
+bash terraform/destroy.sh
 ```
-
-#### 5) Ansible 명령 직접 실행
-
-```bash
-# 연결 핑 테스트
-ansible -i inventory/vagrant.ini all -m ping
-
-# AL2023 감사 실행 (check 모드)
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=al2023 --check
-
-# AL2023에 실제 적용
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=al2023 --diff
-
-# Fedora 감사 실행
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora --check
-
-# Fedora에 실제 적용
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=fedora --diff
-
-# Rocky 8 감사 및 적용
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky8 --check
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky8 --diff
-
-# Rocky 9 감사 및 적용
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9 --check
-ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9 --diff
-```
-
 
 ---
 
@@ -282,6 +218,24 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9
 │           └── frags/        # 재사용 가능한 코드 조각
 │               ├── file_perms.yml  # 파일 권한 설정 공통 패턴
 │               └── unit_off.yml    # 서비스 중지+mask 공통 패턴
+├── vagrant/                  # Vagrant 로컬 가상머신 환경 및 도구
+│   ├── Vagrantfile           # 6개 배포판 멀티 VM 정의
+│   ├── init.sh               # VM 완전 초기화/신규 생성 스크립트
+│   ├── build_image.sh        # Vagrant Box(이미지) 패키징 스크립트
+│   ├── test.sh               # Vagrant 대상 자동 감사/적용 테스트 스크립트
+│   ├── inventory.ini         # Vagrant 전용 인벤토리
+│   └── README.md             # Vagrant 사용 가이드
+├── terraform/                # AWS EC2 멀티 OS 테스트 인프라 (IaC)
+│   ├── main.tf               # VPC, Subnet, IGW, Security Group, Key Pair
+│   ├── admin.tf              # Admin 노드 (Ansible 컨트롤러) 정의
+│   ├── targets.tf            # 6종 OS 테스트 인스턴스 정의
+│   ├── amis.tf               # 최신 공식 AMI 데이터 소스
+│   ├── inventory.tf          # 인벤토리 자동 생성 로직
+│   ├── deploy.sh             # Terraform 배포 스크립트
+│   ├── sync_to_admin.sh      # Admin 노드로 코드 동기화
+│   ├── test.sh               # AWS 테스트 실행 래퍼
+│   ├── destroy.sh            # 인프라 삭제 스크립트
+│   └── README.md             # AWS 테스트 인프라 가이드
 ├── group_vars/
 │   ├── al2023/main.yml       # Amazon Linux 2023 특화
 │   ├── fedora/main.yml       # Fedora 특화
@@ -291,17 +245,18 @@ ansible-playbook -i inventory/vagrant.ini plays/site.yml -e distro_select=rocky9
 │   └── ubuntu24/main.yml     # Ubuntu 24.04 LTS 특화
 ├── inventory/
 │   ├── ec2.example.ini       # EC2 인벤토리 예시
+│   ├── aws_ec2.ini           # Terraform 배포 시 자동 생성되는 인벤토리
 │   └── vagrant.ini           # Vagrant 로컬 VM 테스트 인벤토리
 ├── scripts/
 │   ├── audit.sh              # 감사 래퍼 (--check --diff 강제, 리포트 자동 생성)
 │   ├── report.py             # NDJSON → SUMMARY.md + detail.csv
 │   ├── detect_contamination.py  # 외부 문자(CJK) 침투 검사
 │   ├── fix_known_lines.py    # 문자 오염 패처 (역사적)
-│   └── vagrant_test.sh       # Vagrant VM 기동 및 자동 감사/적용 래퍼
+│   └── vagrant_test.sh       # vagrant/test.sh 위임 래퍼
 ├── callbacks/
 │   └── results_json.py       # NDJSON 이벤트 출력 콜백
 ├── ansible.cfg               # Ansible 설정
-├── Vagrantfile               # AL2023 / Ubuntu 22 / 24 Multi-VM Vagrant 설정
+├── Vagrantfile               # vagrant/Vagrantfile 위임 래퍼
 ├── _selftest/
 │   ├── local.ini             # 로컬 스모크테스트 인벤토리
 │   └── ubuntu.example.ini    # Ubuntu 전용 인벤토리 예시

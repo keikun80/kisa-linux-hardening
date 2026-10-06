@@ -1,0 +1,225 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# =============================================================================
+# KISA Linux Hardening — AL2023 / Fedora / Rocky 8/9 / Ubuntu 22/24 Vagrant Test Environment
+# =============================================================================
+
+Vagrant.configure("2") do |config|
+  # SSH 공통 설정: 새 키 교체 방지 (vagrant 기본 키 유지)
+  config.ssh.insert_key = false
+  config.vm.synced_folder "..", "/vagrant_root", disabled: true
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # VirtualBox Provider 기본 설정
+  config.vm.provider "virtualbox" do |vb|
+    vb.gui = false
+    vb.memory = "1024"
+    vb.cpus = 1
+  end
+
+  # 호스트 사용자의 SSH 공개키가 존재하면 VM에도 자동 등록
+  host_pubkeys = [
+    File.expand_path("~/.ssh/id_ed25519.pub"),
+    File.expand_path("~/.ssh/id_rsa.pub")
+  ].select { |p| File.exist?(p) }.map { |p| File.read(p).strip }.join("\n")
+
+  # Libvirt Provider (QEMU/KVM) 기본 설정 (지원 시)
+  config.vm.provider "libvirt" do |lv|
+    lv.memory = 1024
+    lv.cpus = 1
+  end
+
+  # ---------------------------------------------------------------------------
+  # Amazon Linux 2023
+  # ---------------------------------------------------------------------------
+  config.vm.define "al2023" do |al|
+    al.vm.box = "bento/amazonlinux-2023"
+    al.vm.hostname = "kisa-al2023"
+    al.vm.network "private_network", ip: "192.168.56.23"
+    al.vm.network "forwarded_port", guest: 22, host: 2223, id: "ssh", auto_correct: true
+
+    al.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # ec2-user 사용자 및 sudo/wheel 설정
+      id -u ec2-user >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ec2-user
+      echo 'ec2-user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ec2-user
+      chmod 0440 /etc/sudoers.d/ec2-user
+      # vagrant ssh 키를 ec2-user 계정에도 배포
+      mkdir -p /home/ec2-user/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/ec2-user/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ec2-user/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ec2-user/.ssh/authorized_keys -o /home/ec2-user/.ssh/authorized_keys
+      fi
+      chown -R ec2-user:ec2-user /home/ec2-user/.ssh
+      chmod 700 /home/ec2-user/.ssh
+      chmod 600 /home/ec2-user/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Ubuntu 22.04 LTS (Jammy Jellyfish)
+  # ---------------------------------------------------------------------------
+  config.vm.define "ubuntu22" do |u22|
+    u22.vm.box = "bento/ubuntu-22.04"
+    u22.vm.hostname = "kisa-ubuntu22"
+    u22.vm.network "private_network", ip: "192.168.56.22"
+    u22.vm.network "forwarded_port", guest: 22, host: 2222, id: "ssh", auto_correct: true
+
+    u22.vm.provision "shell", inline: <<-SHELL
+      set -e
+      export DEBIAN_FRONTEND=noninteractive
+      # ubuntu 사용자 및 sudo 설정
+      id -u ubuntu >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo ubuntu
+      echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
+      chmod 0440 /etc/sudoers.d/ubuntu
+      # vagrant ssh 키를 ubuntu 계정에도 배포
+      mkdir -p /home/ubuntu/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ubuntu/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ubuntu/.ssh/authorized_keys -o /home/ubuntu/.ssh/authorized_keys
+      fi
+      chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+      chmod 700 /home/ubuntu/.ssh
+      chmod 600 /home/ubuntu/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Ubuntu 24.04 LTS (Noble Numbat)
+  # ---------------------------------------------------------------------------
+  config.vm.define "ubuntu24" do |u24|
+    u24.vm.box = "bento/ubuntu-24.04"
+    u24.vm.hostname = "kisa-ubuntu24"
+    u24.vm.network "private_network", ip: "192.168.56.24"
+    u24.vm.network "forwarded_port", guest: 22, host: 2224, id: "ssh", auto_correct: true
+
+    u24.vm.provision "shell", inline: <<-SHELL
+      set -e
+      export DEBIAN_FRONTEND=noninteractive
+      # ubuntu 사용자 및 sudo 설정
+      id -u ubuntu >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo ubuntu
+      echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
+      chmod 0440 /etc/sudoers.d/ubuntu
+      # vagrant ssh 키를 ubuntu 계정에도 배포
+      mkdir -p /home/ubuntu/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/ubuntu/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/ubuntu/.ssh/authorized_keys -o /home/ubuntu/.ssh/authorized_keys
+      fi
+      chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+      chmod 700 /home/ubuntu/.ssh
+      chmod 600 /home/ubuntu/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Fedora 41
+  # ---------------------------------------------------------------------------
+  config.vm.define "fedora" do |fd|
+    fd.vm.box = "bento/fedora-41"
+    fd.vm.hostname = "kisa-fedora"
+    fd.vm.network "private_network", ip: "192.168.56.41"
+    fd.vm.network "forwarded_port", guest: 22, host: 2241, id: "ssh", auto_correct: true
+
+    fd.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # fedora 사용자 및 sudo/wheel 설정
+      id -u fedora >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel fedora
+      echo 'fedora ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/fedora
+      chmod 0440 /etc/sudoers.d/fedora
+      # vagrant ssh 키를 fedora 계정에도 배포
+      mkdir -p /home/fedora/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/fedora/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/fedora/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/fedora/.ssh/authorized_keys -o /home/fedora/.ssh/authorized_keys
+      fi
+      chown -R fedora:fedora /home/fedora/.ssh
+      chmod 700 /home/fedora/.ssh
+      chmod 600 /home/fedora/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Rocky Linux 8
+  # ---------------------------------------------------------------------------
+  config.vm.define "rocky8" do |r8|
+    r8.vm.box = "bento/rocky-8"
+    r8.vm.hostname = "kisa-rocky8"
+    r8.vm.network "private_network", ip: "192.168.56.8"
+    r8.vm.network "forwarded_port", guest: 22, host: 2208, id: "ssh", auto_correct: true
+
+    r8.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # rocky 사용자 및 sudo/wheel 설정
+      id -u rocky >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel rocky
+      echo 'rocky ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/rocky
+      chmod 0440 /etc/sudoers.d/rocky
+      # vagrant ssh 키를 rocky 계정에도 배포
+      mkdir -p /home/rocky/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/rocky/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/rocky/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/rocky/.ssh/authorized_keys -o /home/rocky/.ssh/authorized_keys
+      fi
+      chown -R rocky:rocky /home/rocky/.ssh
+      chmod 700 /home/rocky/.ssh
+      chmod 600 /home/rocky/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Rocky Linux 9
+  # ---------------------------------------------------------------------------
+  config.vm.define "rocky9" do |r9|
+    r9.vm.box = "bento/rocky-9"
+    r9.vm.hostname = "kisa-rocky9"
+    r9.vm.network "private_network", ip: "192.168.56.9"
+    r9.vm.network "forwarded_port", guest: 22, host: 2209, id: "ssh", auto_correct: true
+
+    r9.vm.provision "shell", inline: <<-SHELL
+      set -e
+      # rocky 사용자 및 sudo/wheel 설정
+      id -u rocky >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel rocky
+      echo 'rocky ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/rocky
+      chmod 0440 /etc/sudoers.d/rocky
+      # vagrant ssh 키를 rocky 계정에도 배포
+      mkdir -p /home/rocky/.ssh
+      if [ -f /home/vagrant/.ssh/authorized_keys ]; then
+        cp -f /home/vagrant/.ssh/authorized_keys /home/rocky/.ssh/authorized_keys
+      fi
+      if [ -n "#{host_pubkeys}" ]; then
+        echo "#{host_pubkeys}" >> /home/vagrant/.ssh/authorized_keys
+        echo "#{host_pubkeys}" >> /home/rocky/.ssh/authorized_keys
+        sort -u /home/vagrant/.ssh/authorized_keys -o /home/vagrant/.ssh/authorized_keys
+        sort -u /home/rocky/.ssh/authorized_keys -o /home/rocky/.ssh/authorized_keys
+      fi
+      chown -R rocky:rocky /home/rocky/.ssh
+      chmod 700 /home/rocky/.ssh
+      chmod 600 /home/rocky/.ssh/authorized_keys 2>/dev/null || true
+    SHELL
+  end
+end

@@ -21,3 +21,15 @@ _archive_*.tgz
 # Vagrant
 .vagrant
 .vagrant/
+vagrant/.vagrant/
+vagrant/images/*.box
+*.box
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+terraform/inventory_admin.ini
+inventory/aws_ec2.ini
