@@ -172,29 +172,6 @@ vagrant ssh ubuntu22
 vagrant ssh ubuntu24
 
 # VM 상태 확인
-vagrant status
-```
-
-### ⑤ AWS EC2 테스트 인프라 (`terraform/`)
-
-AWS 환경에서 1대의 **Admin 노드(Ansible 컨트롤러)**와 **6개 타깃 OS 노드(AL2023, Fedora, Rocky 8/9, Ubuntu 22/24)**를 전용 VPC 내에 자동 프로비저닝하고 테스트할 수 있습니다.
-
-```bash
-# 1. 인프라 원클릭 배포 (VPC, Admin 노드, 6종 OS 인스턴스 생성)
-bash terraform/deploy.sh
-
-# 2. 프로젝트 코드를 Admin 노드로 동기화
-bash terraform/sync_to_admin.sh
-
-# 3. KISA 감사 및 하드닝 테스트 실행
-bash terraform/test.sh              # 로컬에서 직접 실행
-# 또는
-ssh ubuntu@<ADMIN_IP>              # Admin 노드 접속 후 실행
-
-# 4. 테스트 완료 후 인프라 삭제
-bash terraform/destroy.sh
-```
-
 ---
 
 ## 프로젝트 구조
@@ -225,17 +202,6 @@ bash terraform/destroy.sh
 │   ├── test.sh               # Vagrant 대상 자동 감사/적용 테스트 스크립트
 │   ├── inventory.ini         # Vagrant 전용 인벤토리
 │   └── README.md             # Vagrant 사용 가이드
-├── terraform/                # AWS EC2 멀티 OS 테스트 인프라 (IaC)
-│   ├── main.tf               # VPC, Subnet, IGW, Security Group, Key Pair
-│   ├── admin.tf              # Admin 노드 (Ansible 컨트롤러) 정의
-│   ├── targets.tf            # 6종 OS 테스트 인스턴스 정의
-│   ├── amis.tf               # 최신 공식 AMI 데이터 소스
-│   ├── inventory.tf          # 인벤토리 자동 생성 로직
-│   ├── deploy.sh             # Terraform 배포 스크립트
-│   ├── sync_to_admin.sh      # Admin 노드로 코드 동기화
-│   ├── test.sh               # AWS 테스트 실행 래퍼
-│   ├── destroy.sh            # 인프라 삭제 스크립트
-│   └── README.md             # AWS 테스트 인프라 가이드
 ├── group_vars/
 │   ├── al2023/main.yml       # Amazon Linux 2023 특화
 │   ├── fedora/main.yml       # Fedora 특화
@@ -245,7 +211,6 @@ bash terraform/destroy.sh
 │   └── ubuntu24/main.yml     # Ubuntu 24.04 LTS 특화
 ├── inventory/
 │   ├── ec2.example.ini       # EC2 인벤토리 예시
-│   ├── aws_ec2.ini           # Terraform 배포 시 자동 생성되는 인벤토리
 │   └── vagrant.ini           # Vagrant 로컬 VM 테스트 인벤토리
 ├── scripts/
 │   ├── audit.sh              # 감사 래퍼 (--check --diff 강제, 리포트 자동 생성)
