@@ -84,6 +84,8 @@
   tags: [u-32, cat.files]
 - import_tasks: files/u33_hidden_files_audit.yml
   tags: [u-33, cat.files]
+- import_tasks: files/u99_cups_removal.yml
+  tags: [cups, cat.files]
 
 # ----- 3장 서비스 관리 (U-34 ~ U-62) -------------------------------------------
 - import_tasks: services/u34_finger_off.yml

@@ -1,0 +1,21 @@
+# =============================================================================
+# CUPS 설정 디렉터리 제거
+# 판단 기준: /etc/cups 디렉터리가 없어야 양호
+# 자동 조치: /etc/cups 삭제 (프린팅 서비스 설정 무력화)
+# =============================================================================
+
+- name: "[CUPS] /etc/cups 디렉터리 확인"
+  stat:
+    path: /etc/cups
+  register: cups_config
+
+- name: "[CUPS] /etc/cups 디렉터리 삭제"
+  file:
+    path: /etc/cups
+    state: absent
+  when: cups_config.stat.exists
+
+- name: "[CUPS] /etc/cups 미존재 (양호)"
+  debug:
+    msg: "[CUPS] /etc/cups 없음 — 프린팅 서비스 설정 미설치"
+  when: not cups_config.stat.exists
