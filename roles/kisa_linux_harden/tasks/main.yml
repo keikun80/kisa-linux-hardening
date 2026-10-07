@@ -96,14 +96,23 @@
   tags: [u-37, cat.services]
 - import_tasks: services/u38_dos_prone_services_off.yml
   tags: [u-38, cat.services]
+- import_tasks: services/u39_nfs_client_detect.yml
+  tags: [u-39, cat.services]
 - import_tasks: services/u39_nfs_off.yml
   tags: [u-39, cat.services]
+  when:
+    - not (vu_nfs_client_in_use | default(false) | bool)
+    - not (vu_force_skip_nfs_hardening | bool)
 - import_tasks: services/u40_nfs_access_control.yml
   tags: [u-40, cat.services]
+  when:
+    - not (vu_nfs_client_in_use | default(false) | bool)
+    - not (vu_force_skip_nfs_hardening | bool)
 - import_tasks: services/u41_autofs_off.yml
   tags: [u-41, cat.services]
 - import_tasks: services/u42_rpc_off.yml
   tags: [u-42, cat.services]
+  when: not (vu_nfs_client_in_use | default(false) | bool)
 - import_tasks: services/u43_nis_off.yml
   tags: [u-43, cat.services]
 - import_tasks: services/u44_tftp_talk_off.yml

@@ -1,0 +1,33 @@
+# =============================================================================
+# [U-39:detect] NFS 클라이언트 마운트 자동 감지
+# - findmnt 로 활성 NFS/NFS4 마운트(EFS 포함) 확인
+# - /etc/fstab 내 NFS 항목 확인
+# - 감지 시 vu_nfs_client_in_use=true 설정 → U-39/U-40/U-42 스킵
+# =============================================================================
+
+- name: "[U-39:detect] 활성 NFS 마운트 조회"
+  shell: "findmnt -nro SOURCE,TARGET -t nfs,nfs4 2>/dev/null || true"
+  register: vu_nfs_mounts_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[U-39:detect] fstab 내 NFS 마운트 항목 조회"
+  shell: "grep -E '^[^#].*nfs' /etc/fstab 2>/dev/null || true"
+  register: vu_nfs_fstab_raw
+  changed_when: false
+  failed_when: false
+
+- name: "[U-39:detect] NFS 클라이언트 사용 여부 판정"
+  set_fact:
+    vu_nfs_client_in_use: >-
+      {{ (vu_nfs_mounts_raw.stdout | default('') | trim | length > 0)
+         or (vu_nfs_fstab_raw.stdout | default('') | trim | length > 0) }}
+
+- name: "[U-39:report] NFS 클라이언트 감지 결과"
+  debug:
+    msg: >-
+      {{ vu_nfs_client_in_use | bool
+         and ('[U-39] NFS 클라이언트 사용 중 — U-39/U-40/U-42 NFS 강화 스킵'
+              ~ (' (마운트: ' ~ (vu_nfs_mounts_raw.stdout | default('') | regex_replace('\n', '; ')) ~ ')')
+              )
+         or '[U-39] NFS 클라이언트 없음 — NFS 강화 normally 진행' }}

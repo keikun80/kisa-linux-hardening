@@ -112,6 +112,10 @@ vu_firewall_tcp_ports: [22]
 # U-40: /etc/exports 재생성 (외부 마운트가 끊길 수 있음 → 기본 OFF. 리스트를 넘겨받으면 적용)
 vu_nfs_manage_exports: false
 vu_nfs_exports_lines: []         # 예: ['/srv/share1  10.0.1.0/24(ro,no_root_squash)']
+# NFS 클라이언트 자동 감지: EFS/NFS 마운트 탐지 시 U-39/U-40/U-42 NFS 강화 자동 스킵
+vu_nfs_client_auto_detect: true     # 자동 감지 기능 ON/OFF (기본 ON)
+vu_nfs_client_in_use: false         # 감지 결과 (set_fact 로 덮어씀, 수동 override도 가능)
+vu_force_skip_nfs_hardening: false  # 자동 감지 무시하고 NFS 강화 전체 스킵 (수동 override)
 # U-60: 공용 커뮤니티 문자열 프로브 (보고만)
 vu_snmp_community_probe: true
 
