@@ -60,16 +60,12 @@
     - ansible_pkg_mgr in ['yum', 'dnf']
     - item.stat is defined and item.stat.exists
 
-# ---------- sudo: /etc/sudoers.d drop-in (관리그룹만 sudo 허용) ----------------
-- name: "[U-06] sudoers drop-in 으로 sudo 를 관리그룹 전용으로 제한"
-  copy:
+# ---------- sudo: /etc/sudoers.d drop-in 정리 (클라우드 환경 NOPASSWD 무효화 방지) ----
+- name: "[U-06] 기존에 생성되었을 수 있는 wheel sudoers drop-in 제거"
+  file:
     dest: /etc/sudoers.d/99-kisa-wheel-sudo
-    content: "%{{ vu_su_wheel_group | default('wheel') }} ALL=(ALL) ALL\n"
-    owner: root
-    group: root
-    mode: "0440"
+    state: absent
   when:
-    - vu_su_wheel_group is defined
     - u06_sudoers_d_stat.stat.exists and u06_sudoers_d_stat.stat.isdir
 
 # ---------- wheel/sudo 그룹 멤버십: vu_wheel_users ----------------------------
@@ -79,7 +75,9 @@
     groups: "{{ vu_su_wheel_group | default('wheel') }}"
     append: true
   loop: "{{ vu_wheel_users | default([]) }}"
-  when: vu_su_wheel_group is defined
+  when:
+    - vu_su_wheel_group is defined
+    - (vu_users is not defined) or (item in (vu_users | default([]) | map(attribute='name') | list))
 
 # ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------
 - name: "[U-06:M] Diagnosing su restriction state(strict OFF or wheel absent)"
