@@ -46,7 +46,7 @@
   register: u06_su_bin_stat
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-06] su 바이너리를 관리그룹 SUID 전용(4750) 고정 (RHEL 계열)"
   file:
@@ -57,7 +57,7 @@
   loop: "{{ u06_su_bin_stat.results | default([]) }}"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
     - item.stat is defined and item.stat.exists
 
 # ---------- sudo: /etc/sudoers.d drop-in 정리 (클라우드 환경 NOPASSWD 무효화 방지) ----

@@ -15,7 +15,7 @@
   register: u03_pam_files
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
 
 # ---------- RHEL 계열: system-auth / password-auth (faillock) -----
 - name: "[U-03] faillock 라인 상향 (RHEL 계열)"
@@ -37,7 +37,7 @@
     label: "{{ item.file }} :: {{ item.line[:48] }}"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
     - ((u03_pam_files.results | selectattr('item', 'equalto', item.file)) | first).stat.exists | default(false)
 
 # ---------- Debian 계열: common-auth / common-account -------------------------
@@ -50,7 +50,7 @@
   register: u03_deb_pam_files
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-03] common-auth faillock 주입 (Debian 계열)"
   lineinfile:
@@ -66,7 +66,7 @@
     label: "{{ item.re }}"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
     - ((u03_deb_pam_files.results | selectattr('item', 'equalto', '/etc/pam.d/common-auth')) | first).stat.exists | default(false)
 
 - name: "[U-03] common-account faillock 주입 (Debian 계열)"
@@ -77,7 +77,7 @@
     insertbefore: "^account.*pam_unix"
   when:
     - vu_pam_strict_stack | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
     - ((u03_deb_pam_files.results | selectattr('item', 'equalto', '/etc/pam.d/common-account')) | first).stat.exists | default(false)
 
 # ---------- 공통: strict OFF 일때 수동 지침 ------------------------------------

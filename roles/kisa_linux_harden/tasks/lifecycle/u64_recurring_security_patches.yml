@@ -17,7 +17,7 @@
     state: present
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-64] dnf 자동패치 설정 파일 생성(security만)"
   copy:
@@ -39,7 +39,7 @@
       system_cachedir = /var/cache/dnf-automatic
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-64] dnf 자동패치 타이머 기동"
   systemd:
@@ -49,7 +49,7 @@
   ignore_errors: true
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
 
 # ---------------- Debian 계열 (Ubuntu) ----------------------------------------
 - name: "[U-64] unattended-upgrades 패키지 설치"
@@ -58,7 +58,7 @@
     state: present
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-64] apt 주기적 업그레이드 설정"
   copy:
@@ -71,7 +71,7 @@
       APT::Periodic::Unattended-Upgrade "1";
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-64] apt daily 타이머들 기동"
   systemd:
@@ -84,7 +84,7 @@
     - "{{ vu_autopatch.timer_unit }}"
   when:
     - vu_autopatch_security | bool
-    - ansible_pkg_mgr not in ['yum', 'dnf']
+    - ansible_pkg_mgr not in ['yum', 'dnf', 'dnf5']
 
 - name: "[U-64:M] 자동 패치가 꺼져 있는 상태 리포트"
   debug:
