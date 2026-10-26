@@ -5,8 +5,62 @@
 #   ⚠ ssh 로그인 경로에 영향을 주는 변경. 반드시 테스트 후 확대 시행.
 # =============================================================================
 
-# ---------- RHEL 계열: 파일 존재 확인 ----------------------------------------
-- name: "[U-03] PAM 파일 존재 여부 확인 (RHEL 계열)"
+# ---------- RHEL 계열: authselect 기반 표준 적용 -----------------------------
+- name: "[U-03] authselect 가용 여부 확인 (RHEL 계열)"
+  command: authselect check
+  register: u03_authselect_check
+  changed_when: false
+  failed_when: false
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+
+- name: "[U-03] 현재 authselect 활성 기능 확인 (RHEL 계열)"
+  command: authselect current
+  register: u03_authselect_current
+  changed_when: false
+  failed_when: false
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+    - (u03_authselect_check.rc | default(1)) == 0
+
+- name: "[U-03] authselect with-faillock 기능 활성화 (RHEL 계열)"
+  command: authselect enable-feature with-faillock
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+    - (u03_authselect_check.rc | default(1)) == 0
+    - "'with-faillock' not in (u03_authselect_current.stdout | default(''))"
+
+- name: "[U-03] /etc/security/faillock.conf 파라미터 설정 (RHEL 계열)"
+  lineinfile:
+    path: /etc/security/faillock.conf
+    regexp: "^#?\\s*{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { key: "deny", value: "{{ vu_login_maxfails }}" }
+    - { key: "unlock_time", value: "{{ vu_login_unlock_time }}" }
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+
+- name: "[U-03] /etc/security/faillock.conf silent 활성화 (RHEL 계열)"
+  lineinfile:
+    path: /etc/security/faillock.conf
+    regexp: "^#?\\s*silent\\b"
+    line: "silent"
+    state: present
+  when:
+    - vu_pam_strict_stack | bool
+    - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+
+# ---------- RHEL 계열 (수동 fallback): authselect 비활성 시스템 ----------------
+- name: "[U-03] PAM 파일 존재 여부 확인 (수동 fallback)"
   stat:
     path: "{{ item }}"
   loop:
@@ -16,28 +70,30 @@
   when:
     - vu_pam_strict_stack | bool
     - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+    - (u03_authselect_check.rc | default(1)) != 0
 
-# ---------- RHEL 계열: system-auth / password-auth (faillock) -----
-- name: "[U-03] faillock 라인 상향 (RHEL 계열)"
+- name: "[U-03] faillock 라인 상향 (수동 fallback)"
   lineinfile:
     path: "{{ item.file }}"
     regexp: "^{{ item.regexp_prefix }}"
     line: "{{ item.line }}"
     insertbefore: "{{ item.insertbefore | default(omit) }}"
+    insertafter: "{{ item.insertafter | default(omit) }}"
   loop:
     - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", insertbefore: "^auth.*pam_unix" }
     - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*preauth",  line: "auth required pam_faillock.so preauth deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", insertbefore: "^auth.*pam_unix" }
-    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok" }
-    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok" }
-    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
-    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent" }
-    - { file: /etc/pam.d/system-auth,    regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
-    - { file: /etc/pam.d/password-auth,  regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok", insertafter: "^auth.*pam_unix" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authok",   line: "auth [default=die] pam_faillock.so authok", insertafter: "^auth.*pam_unix" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", insertafter: "\\bpam_faillock\\.so authok" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "auth.*pam_faillock.*authfail", line: "auth requisite pam_faillock.so authfail deny={{ vu_login_maxfails }} unlock_time={{ vu_login_unlock_time }} silent", insertafter: "\\bpam_faillock\\.so authok" }
+    - { file: /etc/pam.d/system-auth,    regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so", insertbefore: "^account.*pam_unix" }
+    - { file: /etc/pam.d/password-auth,  regexp_prefix: "account.*pam_faillock",       line: "account required pam_faillock.so", insertbefore: "^account.*pam_unix" }
   loop_control:
     label: "{{ item.file }} :: {{ item.line[:48] }}"
   when:
     - vu_pam_strict_stack | bool
     - ansible_pkg_mgr in ['yum', 'dnf', 'dnf5']
+    - (u03_authselect_check.rc | default(1)) != 0
     - ((u03_pam_files.results | selectattr('item', 'equalto', item.file)) | first).stat.exists | default(false)
 
 # ---------- Debian 계열: common-auth / common-account -------------------------
